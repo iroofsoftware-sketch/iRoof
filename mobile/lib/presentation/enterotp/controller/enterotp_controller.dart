@@ -25,7 +25,7 @@ class EnterOTPController extends GetxController {
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
-        Get.off(() => const Createnewpasswordscreen(), arguments: email);
+        Get.off(() => Createnewpasswordscreen(email: email));
       }
     } catch (e) {
       Fluttertoast.showToast(

@@ -16,6 +16,9 @@ import '../../../main.dart';
 String _getClientName(dynamic assignment) {
   try { return assignment['clientId']['name'] ?? 'Unknown'; } catch (e) { return 'Unknown'; }
 }
+String _getClientPhone(dynamic assignment) {
+  try { return assignment['clientId']['phoneNo'] ?? 'N/A'; } catch (e) { return 'N/A'; }
+}
 String _getClientPlace(dynamic assignment) {
   try { return assignment['clientId']['place'] ?? 'N/A'; } catch (e) { return 'N/A'; }
 }
@@ -276,28 +279,28 @@ class Ongoingassignmentscreen extends StatelessWidget {
                                   CustomRowWidget(
                                       controller: controller,
                                       tittle: "Client details",
-                                      subtitle: "Car Porch",
-                                      toptext: "VS 2351"),
+                                      subtitle: controller.assignments.isNotEmpty ? controller.assignments[index]['status'] ?? 'N/A' : 'N/A',
+                                      toptext: controller.assignments.isNotEmpty ? controller.assignments[index]['_id']?.toString().substring(0, 8) ?? 'N/A' : 'N/A'),
                                   SizedBox(height: MyApp.height * .01),
                                   Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       ClientInfoCard(
                                           title: "Client Name",
-                                          subtitle: "Arun K Thomas",
+                                          subtitle: controller.assignments.isNotEmpty ? _getClientName(controller.assignments[index]) : 'N/A',
                                           Icons: CupertinoIcons
                                               .person_crop_circle),
                                       ClientInfoCard(
                                           title: "Phone no",
-                                          subtitle: "+91 9876544356",
+                                          subtitle: controller.assignments.isNotEmpty ? _getClientPhone(controller.assignments[index]) : 'N/A',
                                           Icons: CupertinoIcons.phone_fill),
                                       ClientInfoCard(
                                           title: "Location",
-                                          subtitle: "Kochi",
+                                          subtitle: controller.assignments.isNotEmpty ? _getClientPlace(controller.assignments[index]) : 'N/A',
                                           Icons: CupertinoIcons.location_solid),
                                       ClientInfoCard(
                                         title: "Total sq. ft ",
-                                        subtitle: "1023.54 sq. ft",
+                                        subtitle: controller.assignments.isNotEmpty ? '${controller.assignments[index]['totalAreaSqFt'] ?? 0} sq. ft' : 'N/A',
                                         Icons: Icons.straighten,
                                         detailsiconinactive:
                                             Icons.arrow_drop_down,
@@ -306,15 +309,15 @@ class Ongoingassignmentscreen extends StatelessWidget {
                                       ),
                                       ClientInfoCard(
                                           title: "Total Cost",
-                                          subtitle: "₹57800/-",
+                                          subtitle: controller.assignments.isNotEmpty ? '₹${controller.assignments[index]['totalBudget'] ?? 0}/-' : 'N/A',
                                           Icons: Icons.currency_rupee),
                                       ClientInfoCard(
                                           title: "Sq Ft rate",
-                                          subtitle: "₹570/-",
+                                          subtitle: controller.assignments.isNotEmpty ? '₹${controller.assignments[index]['sellingRate'] ?? 0}/-' : 'N/A',
                                           Icons: Icons.currency_rupee),
                                       ClientInfoCard(
                                           title: "Site Visited ",
-                                          subtitle: "20-08-2024",
+                                          subtitle: controller.assignments.isNotEmpty && controller.assignments[index]['sitevisitDate'] != null ? controller.assignments[index]['sitevisitDate'].toString().substring(0, 10) : 'N/A',
                                           Icons: Icons.calendar_month),
                                       ClientInfoCard(
                                           title: "Work Started",

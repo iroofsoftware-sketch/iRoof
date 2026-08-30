@@ -73,12 +73,12 @@ class SitevisitorScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextThemedel(text: "Kevin M S"),
-                        TextThemedel(
-                          text: "S123456",
+                        Obx(() => TextThemedel(text: controller.userName.value.isEmpty ? "Loading..." : controller.userName.value)),
+                        Obx(() => TextThemedel(
+                          text: controller.userId.value.isEmpty ? '' : controller.userId.value.substring(0, 8),
                           color: ColorData.textfieldunfocuscolor,
                           fontSize: 10,
-                        ),
+                        )),
                       ],
                     ),
                     Spacer(),
@@ -188,7 +188,7 @@ class SitevisitorScreen extends StatelessWidget {
           Expanded(
             child: ListView.builder(
               physics: BouncingScrollPhysics(),
-              itemCount: 15,
+              itemCount: controller.assignments.length,
               shrinkWrap: true,
               itemBuilder: (context, index) => Padding(
                 padding: const EdgeInsets.symmetric(
@@ -232,15 +232,15 @@ class SitevisitorScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              TextThemedel(
-                                text: "Kevin M S",
+                              Obx(() => TextThemedel(
+                                text: controller.assignments.isNotEmpty ? (controller.assignments[index]['clientId']?['name'] ?? 'Client') : 'Client',
                                 fontSize: 12,
-                              ),
-                              TextThemedel(
-                                text: "07-10-2024",
+                              )),
+                              Obx(() => TextThemedel(
+                                text: controller.assignments.isNotEmpty && controller.assignments[index]['sitevisitDate'] != null ? controller.assignments[index]['sitevisitDate'].toString().substring(0, 10) : 'No date',
                                 color: ColorData.maincolor,
                                 fontSize: 12,
-                              ),
+                              )),
                             ],
                           ),
                         ),
@@ -261,7 +261,10 @@ class SitevisitorScreen extends StatelessWidget {
                         // ),
                         CommonMaterialButton(
                           onPressed: () {
-                            Navi.offAll(SiteassignmentDetails(tohome: true,));
+                            Navi.offAll(SiteassignmentDetails(
+                              tohome: true,
+                              assignment: controller.assignments.isNotEmpty ? controller.assignments[index] : null,
+                            ));
                           },
                           width: MyApp.width * .3,
                           elevation: 10,
