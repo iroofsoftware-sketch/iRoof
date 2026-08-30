@@ -73,7 +73,7 @@ import mongoose from "mongoose";
 //           otherExpenses,
 //         });
 //         updatedTransportations = transportResult.transportations;
-//         totalTransportationCost = transportResult.totalTransportationCost;
+//         totalTransportationCost = transportResult.totalTransportation;
 //       } catch (error) {
 //         console.error("Error calculating transportation charge:", error);
 //       }
@@ -239,7 +239,7 @@ import mongoose from "mongoose";
 //         updatedTransportations = transportResult
 //         console.log("trans",updatedTransportations);
         
-//         totalTransportationCost = transportResult.totalTransportationCost;
+//         totalTransportationCost = transportResult.totalTransportation;
 //     } catch (error) {
 //         console.error("Error calculating transportation charge:", error);
 //     }
