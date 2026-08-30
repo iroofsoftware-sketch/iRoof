@@ -13,6 +13,13 @@ import '../../../core/ongoingassignment/ongoingassignmentWidgets/card.dart';
 import '../../../core/ongoingassignment/ongoingassignmentWidgets/clientdetailssec.dart';
 import '../../../main.dart';
 
+String _getClientName(dynamic assignment) {
+  try { return assignment['clientId']['name'] ?? 'Unknown'; } catch (e) { return 'Unknown'; }
+}
+String _getClientPlace(dynamic assignment) {
+  try { return assignment['clientId']['place'] ?? 'N/A'; } catch (e) { return 'N/A'; }
+}
+
 class Ongoingassignmentscreen extends StatelessWidget {
   const Ongoingassignmentscreen({super.key});
 
@@ -102,7 +109,7 @@ class Ongoingassignmentscreen extends StatelessWidget {
             () => Expanded(
                 child: ListView.builder(
               shrinkWrap: true,
-              itemCount: controller.search.value == false ? 1 : 10,
+              itemCount: controller.search.value == false ? 1 : controller.assignments.length,
               physics: BouncingScrollPhysics(),
               itemBuilder: (context, index) {
                 return Obx(
@@ -131,7 +138,7 @@ class Ongoingassignmentscreen extends StatelessWidget {
                                       ),
                                       SizedBox(width: 5),
                                       Text(
-                                        "VS 2351",
+                                        controller.assignments.isNotEmpty ? controller.assignments[index]['_id']?.toString().substring(0, 8) ?? 'N/A' : 'N/A',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color:
@@ -172,7 +179,7 @@ class Ongoingassignmentscreen extends StatelessWidget {
                                                 ),
                                                 children: [
                                                   TextSpan(
-                                                    text: "Car Porch",
+                                                    text: controller.assignments.isNotEmpty ? controller.assignments[index]['status'] ?? 'N/A' : 'N/A',
                                                     style: TextStyle(
                                                       fontWeight:
                                                           FontWeight.bold,
@@ -195,7 +202,7 @@ class Ongoingassignmentscreen extends StatelessWidget {
                                                 ),
                                                 children: [
                                                   TextSpan(
-                                                    text: "Amal",
+                                                    text: controller.assignments.isNotEmpty ? _getClientName(controller.assignments[index]) : 'Unknown',
                                                     style: TextStyle(
                                                       color: ColorData
                                                           .textfieldunfocuscolor,
@@ -216,7 +223,7 @@ class Ongoingassignmentscreen extends StatelessWidget {
                                                 ),
                                                 const SizedBox(width: 5),
                                                 Text(
-                                                  "Kochi",
+                                                  controller.assignments.isNotEmpty ? _getClientPlace(controller.assignments[index]) : 'N/A',
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     color: ColorData.maincolor,

@@ -14,6 +14,7 @@ import '../../../common/Navigation/navigation.dart';
 
 import '../../../main.dart';
 import '../../Notification/ui/notificationscreen.dart';
+import '../controller/profiecontroller.dart';
 
 class ProfilescreenEdit extends StatelessWidget {
   ProfilescreenEdit({super.key});
@@ -25,6 +26,7 @@ class ProfilescreenEdit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.put(ProfileEditController());
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
@@ -256,14 +258,10 @@ class ProfilescreenEdit extends StatelessWidget {
                                 ),
                                 color: ColorData.maincolor,
                                 onPressed: () {
-                                  Navi.toOff(Bottomsheetnavigation());
-                                  Fluttertoast.showToast(
-                                    msg: "Profile Edited",
-                                    toastLength:
-                                    Toast.LENGTH_SHORT,
-                                    gravity:
-                                    ToastGravity.BOTTOM,
-                                    timeInSecForIosWeb: 1,
+                                  controller.saveProfile(
+                                    name.text.trim(),
+                                    email.text.trim(),
+                                    phone.text.trim(),
                                   );
                                 },
                                 elevation: 20,
