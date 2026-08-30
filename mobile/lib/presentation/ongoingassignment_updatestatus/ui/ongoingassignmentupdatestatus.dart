@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import '../controller/ongoingassignmentupdatecontroller.dart';
 import 'package:get/get.dart';
 import 'package:iroofing/common/common_textfield/common_textfield.dart';
 import 'package:iroofing/common/elevted_button/ElevatedButton.dart';
@@ -21,6 +22,7 @@ class Ongoingassignmentupdatestatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var cardController = Get.put(UpdatepageCardController());
+    var controller = Get.put(OngoingassignmentupdatestatusController());
     var comment = TextEditingController();
 
     return PopScope(
@@ -127,12 +129,16 @@ class Ongoingassignmentupdatestatus extends StatelessWidget {
                           padding: EdgeInsets.symmetric(horizontal: MyApp.width*.08),
                           borderRadius: BorderRadius.circular(5),
                           onPressed: () {
-                            Navi.to(Bottomsheetnavigation(pos: 1,),transition: Transition.leftToRight);
-                            Fluttertoast.showToast(
-                              msg: "Status Updated",
-                              toastLength: Toast.LENGTH_SHORT,
-                              gravity: ToastGravity.BOTTOM,
-                            );
+                            final selectedStatus = cardController.selectedCard.value;
+                            if (selectedStatus.isEmpty) {
+                              Fluttertoast.showToast(
+                                msg: "Please select a status",
+                                toastLength: Toast.LENGTH_SHORT,
+                                gravity: ToastGravity.BOTTOM,
+                              );
+                              return;
+                            }
+                            controller.updateStatus(selectedStatus);
                           },
                           child: TextThemedel(text: "Save",color: ColorData.whitecolor,),
                         ),

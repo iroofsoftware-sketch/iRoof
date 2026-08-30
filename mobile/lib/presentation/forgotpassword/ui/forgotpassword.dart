@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iroofing/common/Color/Colordata.dart';
 import 'package:iroofing/main.dart';
-import 'package:iroofing/presentation/enterotp/ui/enterotp_screen.dart';
+
 import 'package:iroofing/presentation/forgotpassword/controller/forgotpasswordcontroller.dart';
 import 'package:iroofing/presentation/login/ui/loginpage.dart';
 
@@ -91,20 +91,23 @@ class Forgotpassword extends StatelessWidget {
                       SizedBox(
                         height: MyApp.height * .04,
                       ),
-                      CommonMaterialButton(
-                        width: double.infinity,
-                        height: MyApp.height * .06,
-                        borderRadius: BorderRadius.circular(5),
-                        onPressed: () {
-                          Navi.toOff(EnterotpScreen());
-                        },
-                        color: ColorData.maincolor,
-                        elevation: 5,
-                        child: TextThemedel(
-                          text: "Send OTP",
-                          color: ColorData.whitecolor,
-                          fontSize: 20,
-                        ),
+                      Obx(() => controller.isLoading.value
+                        ? CircularProgressIndicator(color: ColorData.maincolor)
+                        : CommonMaterialButton(
+                            width: double.infinity,
+                            height: MyApp.height * .06,
+                            borderRadius: BorderRadius.circular(5),
+                            onPressed: () {
+                              controller.sendOtp(email.text.trim());
+                            },
+                            color: ColorData.maincolor,
+                            elevation: 5,
+                            child: TextThemedel(
+                              text: "Send OTP",
+                              color: ColorData.whitecolor,
+                              fontSize: 20,
+                            ),
+                          ),
                       ),
                       SizedBox(
                         height: MyApp.height * .03,

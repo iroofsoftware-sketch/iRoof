@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iroofing/common/Navigation/navigation.dart';
-import 'package:iroofing/presentation/createnewpassword/ui/CreatenewpasswordScreen.dart';
+
 import 'package:iroofing/presentation/enterotp/controller/enterotp_controller.dart';
 import 'package:iroofing/presentation/login/ui/loginpage.dart';
 
@@ -12,7 +12,8 @@ import '../../../common/text/textdata.dart';
 import '../../../main.dart';
 
 class EnterotpScreen extends StatelessWidget {
-  const EnterotpScreen({super.key});
+  final String email;
+  const EnterotpScreen({super.key, required this.email});
 
   @override
   Widget build(BuildContext context) {
@@ -91,20 +92,23 @@ class EnterotpScreen extends StatelessWidget {
                       SizedBox(
                         height: MyApp.height * .04,
                       ),
-                      CommonMaterialButton(
-                        width: double.infinity,
-                        height: MyApp.height * .06,
-                        borderRadius: BorderRadius.circular(10),
-                        onPressed: () {
-                          Navi.toOff(Createnewpasswordscreen());
-                        },
-                        color: ColorData.maincolor,
-                        elevation: 5,
-                        child: TextThemedel(
-                          text: "Continue",
-                          color: ColorData.whitecolor,
-                          fontSize: 20,
-                        ),
+                      Obx(() => controller.isLoading.value
+                        ? CircularProgressIndicator(color: ColorData.maincolor)
+                        : CommonMaterialButton(
+                            width: double.infinity,
+                            height: MyApp.height * .06,
+                            borderRadius: BorderRadius.circular(10),
+                            onPressed: () {
+                              controller.verifyOtp(email, otp.text.trim());
+                            },
+                            color: ColorData.maincolor,
+                            elevation: 5,
+                            child: TextThemedel(
+                              text: "Continue",
+                              color: ColorData.whitecolor,
+                              fontSize: 20,
+                            ),
+                          ),
                       ),
                       SizedBox(
                         height: MyApp.height * .03,

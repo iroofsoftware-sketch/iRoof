@@ -6,7 +6,6 @@ import 'package:iroofing/presentation/enterotp/ui/enterotp_screen.dart';
 
 import '../../../common/Color/Colordata.dart';
 
-import '../../../common/bottomsheet/ui/botttomsheet.dart';
 import '../../../common/common_textfield/common_textfield.dart';
 import '../../../common/elevted_button/ElevatedButton.dart';
 import '../../../common/text/textdata.dart';
@@ -14,7 +13,8 @@ import '../../../main.dart';
 import '../../login/ui/loginpage.dart';
 
 class Createnewpasswordscreen extends StatelessWidget {
-  const Createnewpasswordscreen({super.key});
+  final String email;
+  const Createnewpasswordscreen({super.key, required this.email});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +23,7 @@ class Createnewpasswordscreen extends StatelessWidget {
     var conformpassword = TextEditingController();
     return PopScope(
       onPopInvoked: (didPop) {
-        Navi.toOff(EnterotpScreen(),transition: Transition.leftToRight);
+        Navi.toOff(EnterotpScreen(email: email),transition: Transition.leftToRight);
       },
       canPop: false,
       child: Scaffold(
@@ -140,7 +140,11 @@ class Createnewpasswordscreen extends StatelessWidget {
                           height: MyApp.height * .06,
                           borderRadius: BorderRadius.circular(5),
                           onPressed: () {
-                            Navi.to(Bottomsheetnavigation(),);
+                            controller.resetPassword(
+                              email,
+                              password.text.trim(),
+                              conformpassword.text.trim(),
+                            );
                           },
                           color: ColorData.maincolor,
                           elevation: 5,

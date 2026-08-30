@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:iroofing/common/Color/Colordata.dart';
 import 'package:iroofing/common/Navigation/navigation.dart';
-import 'package:iroofing/common/bottomsheet/ui/botttomsheet.dart';
 import 'package:iroofing/common/common_textfield/common_textfield.dart';
 import 'package:iroofing/common/elevted_button/ElevatedButton.dart';
 import 'package:iroofing/common/text/textdata.dart';
@@ -108,7 +106,7 @@ class Loginpage extends StatelessWidget {
                           Obx(
                             () => Checkbox(
                               activeColor: ColorData.maincolor,
-                              value: controller.reemberme.value,
+                              value: controller.rememberme.value,
                               onChanged: (value) {
                                 controller.togglerememberme();
                               },
@@ -120,25 +118,23 @@ class Loginpage extends StatelessWidget {
                           )
                         ],
                       ),
-                      CommonMaterialButton(
-                        width: double.infinity,
-                        height: MyApp.height * .06,
-                        borderRadius: BorderRadius.circular(5),
-                        onPressed: () {
-                          Fluttertoast.showToast(
-                              msg: "Login Success",
-                              toastLength: Toast.LENGTH_SHORT,
-                              gravity: ToastGravity.BOTTOM,
-                          );
-                          Navi.toOff(Bottomsheetnavigation());
-                        },
-                        color: ColorData.maincolor,
-                        elevation: 5,
-                        child: TextThemedel(
-                          text: "Login",
-                          color: ColorData.whitecolor,
-                          fontSize: 20,
-                        ),
+                      Obx(() => controller.isLoading.value
+                        ? Center(child: CircularProgressIndicator(color: ColorData.maincolor))
+                        : CommonMaterialButton(
+                            width: double.infinity,
+                            height: MyApp.height * .06,
+                            borderRadius: BorderRadius.circular(5),
+                            onPressed: () {
+                              controller.login(email.text.trim(), password.text.trim());
+                            },
+                            color: ColorData.maincolor,
+                            elevation: 5,
+                            child: TextThemedel(
+                              text: "Login",
+                              color: ColorData.whitecolor,
+                              fontSize: 20,
+                            ),
+                          ),
                       ),
                       SizedBox(
                         height: MyApp.height * .03,

@@ -77,9 +77,9 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: ListTile(
                 leading: Icon(Icons.person),
-                title: TextThemedel(
-                  text: "Akhil C J",
-                ),
+                title: Obx(() => TextThemedel(
+                  text: controller.name.value.isEmpty ? "Loading..." : controller.name.value,
+                )),
               ),
             ),
             Container(
@@ -93,9 +93,9 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: ListTile(
                 leading: Icon(Icons.email),
-                title: TextThemedel(
-                  text: "akhilcj@gmail.com",
-                ),
+                title: Obx(() => TextThemedel(
+                  text: controller.email.value.isEmpty ? "Loading..." : controller.email.value,
+                )),
               ),
             ),
             Container(
@@ -109,9 +109,9 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: ListTile(
                 leading: Icon(Icons.phone),
-                title: TextThemedel(
-                  text: "+91 8767 5432 52",
-                ),
+                title: Obx(() => TextThemedel(
+                  text: controller.phone.value.isEmpty ? "Loading..." : controller.phone.value,
+                )),
               ),
             ),
             Container(
@@ -132,14 +132,7 @@ class ProfileScreen extends StatelessWidget {
             ),
             GestureDetector(
               onTap: () {
-                Get.delete<SplashscreenController>();
-                // Get.delete<BottomSheetcntroller>();
-                Navi.toOff(Splashscreen());
-                Fluttertoast.showToast(
-                  msg: "Logout successfully",
-                  toastLength: Toast.LENGTH_SHORT,
-                  gravity: ToastGravity.BOTTOM,
-                );
+                controller.logout();
               },
               child: Container(
                 decoration: BoxDecoration(

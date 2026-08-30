@@ -17,7 +17,8 @@ import '../../Notification/ui/notificationscreen.dart';
 
 class SiteassignmentDetails extends StatelessWidget {
   final bool tohome;
-  const SiteassignmentDetails({super.key,required this.tohome});
+  final Map<String, dynamic>? assignment;
+  const SiteassignmentDetails({super.key, required this.tohome, this.assignment});
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +82,9 @@ class SiteassignmentDetails extends StatelessWidget {
                     ),
                     Spacer(),
                     TextThemedel(
-                      text: "12/2/2024",
+                      text: assignment?['sitevisitDate'] != null
+                          ? assignment!['sitevisitDate'].toString().substring(0, 10)
+                          : 'No date',
                       color: ColorData.textfieldunfocuscolor,
                     ),
                   ],
@@ -120,8 +123,8 @@ class SiteassignmentDetails extends StatelessWidget {
                       CupertinoIcons.profile_circled,
                       color: ColorData.maincolor,
                     ),
-                    title: TextThemedel(text: "Kevin M S"),
-                    trailing: TextThemedel(text: "S123456"),
+                    title: TextThemedel(text: assignment?['clientId']?['name'] ?? 'Unknown Client'),
+                    trailing: TextThemedel(text: assignment?['clientId']?['phoneNo'] ?? ''),
                   ),
                 ),
                 SizedBox(
@@ -137,7 +140,7 @@ class SiteassignmentDetails extends StatelessWidget {
                       CupertinoIcons.phone_fill,
                       color: ColorData.maincolor,
                     ),
-                    title: TextThemedel(text: "+91 8765 5643 32"),
+                    title: TextThemedel(text: assignment?['clientId']?['phoneNo'] ?? 'No phone'),
                   ),
                 ),
                 SizedBox(
@@ -153,7 +156,7 @@ class SiteassignmentDetails extends StatelessWidget {
                       Icons.location_on_sharp,
                       color: ColorData.maincolor,
                     ),
-                    title: TextThemedel(text: "Aluva,Ernakulam,Kerala"),
+                    title: TextThemedel(text: "${assignment?['clientId']?['place'] ?? ''}, ${assignment?['clientId']?['district'] ?? ''}"),
                   ),
                 ),
                 SizedBox(
