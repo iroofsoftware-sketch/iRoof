@@ -188,7 +188,11 @@ class SiteassignmentDetails extends StatelessWidget {
                       Icons.car_repair_outlined,
                       color: ColorData.maincolor,
                     ),
-                    title: TextThemedel(text: "Car Porch"),
+                    title: TextThemedel(
+                      text: assignment?['sheetingPrice'] != null && (assignment!['sheetingPrice'] as List).isNotEmpty
+                        ? assignment!['sheetingPrice'][0]['roofPreference'] ?? 'N/A'
+                        : 'N/A',
+                    ),
                   ),
                 ),
                 SizedBox(
