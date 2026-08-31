@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import AuxzonFooter from '../../common/AuxzonFooter';
 import Header from "../components/Header";
 import addnew from "../assets/icons/adduser.png";
 import addclients from "../assets/icons/addclients.png";
@@ -601,6 +602,7 @@ const AdminDashboard = () => {
             {/* ---------------- */}
           </div>
         </div>
+        <AuxzonFooter />
       </div>
     </div>
   );

@@ -69,6 +69,11 @@ const SideNav = ({ isOpen, toggleSidebar }) => {
           ))}
         </ul>
       </div>
+      <div className="absolute bottom-0 left-0 right-0 py-3 px-4 border-t border-blue-800">
+        <p className="text-xs text-blue-300 text-center">
+          Powered by <span className="font-bold text-white">Auxzon</span>
+        </p>
+      </div>
     </div>
   );
 };
