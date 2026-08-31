@@ -3909,7 +3909,7 @@ const handleSubmitEstimate = async () => {
                         type="number"
                         className="w-full p-2 border rounded"
                         value={estimateData.labourData.sheetingLabour.localWorkers}
-                        onChange={(e) => handleLabourDataChange('sheetingLabour', 'localWorkers', parseInt(e.target.value) || 0)}
+                        onChange={(e) => handleLabourDataChange('sheetingLabour', 'localWorkers', (e.target.value === "" ? 0 : Number(e.target.value)) || 0)}
                       />
                     </div>
                     <div>
@@ -3918,7 +3918,7 @@ const handleSubmitEstimate = async () => {
                         type="number"
                         className="w-full p-2 border rounded"
                         value={estimateData.labourData.sheetingLabour.siteWorkers}
-                        onChange={(e) => handleLabourDataChange('sheetingLabour', 'siteWorkers', parseInt(e.target.value) || 0)}
+                        onChange={(e) => handleLabourDataChange('sheetingLabour', 'siteWorkers', (e.target.value === "" ? 0 : Number(e.target.value)) || 0)}
                       />
                     </div>
                   </div>
@@ -3934,7 +3934,7 @@ const handleSubmitEstimate = async () => {
                         type="number"
                         className="w-full p-2 border rounded"
                         value={estimateData.labourData.weldingLabour.localWorkers}
-                        onChange={(e) => handleLabourDataChange('weldingLabour', 'localWorkers', parseInt(e.target.value) || 0)}
+                        onChange={(e) => handleLabourDataChange('weldingLabour', 'localWorkers', (e.target.value === "" ? 0 : Number(e.target.value)) || 0)}
                       />
                     </div>
                     <div>
@@ -3943,7 +3943,7 @@ const handleSubmitEstimate = async () => {
                         type="number"
                         className="w-full p-2 border rounded"
                         value={estimateData.labourData.weldingLabour.siteWorkers}
-                        onChange={(e) => handleLabourDataChange('weldingLabour', 'siteWorkers', parseInt(e.target.value) || 0)}
+                        onChange={(e) => handleLabourDataChange('weldingLabour', 'siteWorkers', (e.target.value === "" ? 0 : Number(e.target.value)) || 0)}
                       />
                     </div>
                   </div>
