@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:iroofing/services/api_service.dart';
@@ -7,7 +8,6 @@ class LoginController extends GetxController {
   var showpassword = false.obs;
   var rememberme = false.obs;
   var isLoading = false.obs;
-  String? userId;
 
   togglepass() {
     showpassword.value = !showpassword.value;
@@ -38,8 +38,11 @@ class LoginController extends GetxController {
         final user = data['user'];
 
         if (token != null) {
-          await ApiService.saveToken(token);
-          userId = user['_id'];
+          final storage = FlutterSecureStorage();
+          await storage.write(key: 'jwt_token', value: token);
+          await storage.write(key: 'user_id', value: user['_id'].toString());
+          await storage.write(key: 'user_name', value: user['name'].toString());
+          await storage.write(key: 'user_type', value: data['userType'].toString());
 
           Fluttertoast.showToast(
             msg: "Login Successful",
@@ -52,7 +55,7 @@ class LoginController extends GetxController {
       }
     } catch (e) {
       Fluttertoast.showToast(
-        msg: "Invalid email or password",
+        msg: e.toString(),
         toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.BOTTOM,
       );
