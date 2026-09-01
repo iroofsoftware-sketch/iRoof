@@ -17,7 +17,9 @@ connectDB()
 app.use(cookieParser());
 
 app.use(cors({
-    origin: [process.env.FRONTEND_URL, process.env.LOCAL_FRONTEND_URL],
+    origin: function(origin, callback) {
+        callback(null, true);
+    },
     credentials: true
 }));
 
