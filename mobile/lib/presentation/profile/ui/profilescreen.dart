@@ -34,9 +34,8 @@ class ProfileScreen extends StatelessWidget {
                 Container(
                   height: MyApp.height * .2,
                   decoration: BoxDecoration(
-                      image: DecorationImage(
-                          image: AssetImage("assets/profilecover.jpg"),
-                          fit: BoxFit.cover)),
+                    color: ColorData.maincolor,
+                  ),
                 ),
                 Positioned(
                   right: 0,
@@ -57,10 +56,16 @@ class ProfileScreen extends StatelessWidget {
                         side: BorderSide(
                             color: ColorData.whitecolor,
                             width: MyApp.width * .009)),
-                    child: CircleAvatar(
+                    child: Obx(() => CircleAvatar(
                       radius: MyApp.width * .009 * MyApp.height * .02,
-                      backgroundImage: AssetImage('assets/profileimg.png'),
-                    ),
+                      backgroundColor: ColorData.maincolor,
+                      backgroundImage: controller.profilePic.value.isNotEmpty
+                          ? NetworkImage(controller.profilePic.value)
+                          : null,
+                      child: controller.profilePic.value.isEmpty
+                          ? Icon(Icons.person, color: Colors.white, size: MyApp.width * .1)
+                          : null,
+                    )),
                   ),
                 )
               ],
@@ -178,7 +183,7 @@ class ProfileScreen extends StatelessWidget {
                   Row(
                     children: [
                       TextThemedel(
-                        text: "55",
+                        text: "0",
                         fontWeight: FontWeight.bold,
                         color: ColorData.maincolor,
                         fontSize: 15,
@@ -196,3 +201,4 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
+

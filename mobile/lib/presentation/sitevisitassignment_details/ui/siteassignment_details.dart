@@ -51,7 +51,7 @@ class SiteassignmentDetails extends StatelessWidget {
                   Navi.toOff(NotificationScreen());
                 },
                 icon: Badge(
-                  label: TextThemedel(text: "5"),
+                  label: TextThemedel(text: "0"),
                   child: Icon(
                     CupertinoIcons.bell_fill,
                     color: ColorData.whitecolor,
@@ -711,3 +711,4 @@ class SiteassignmentDetails extends StatelessWidget {
     );
   }
 }
+

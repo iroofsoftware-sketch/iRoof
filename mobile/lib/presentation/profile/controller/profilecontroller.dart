@@ -9,6 +9,7 @@ class ProfileController extends GetxController {
   var phone = ''.obs;
   var designation = ''.obs;
   var location = ''.obs;
+  var profilePic = ''.obs;
 
   @override
   void onInit() {
@@ -30,6 +31,7 @@ class ProfileController extends GetxController {
         phone.value = user['mobileNumber'] ?? '';
         designation.value = user['designations'] ?? '';
         location.value = user['location'] ?? '';
+        profilePic.value = user['profilePic'] ?? '';
       }
     } catch (e) {
       print('Profile load error: $e');

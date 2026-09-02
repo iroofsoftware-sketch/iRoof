@@ -3046,6 +3046,7 @@
 
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
+import Api from '../../api/axiosConfig';
 import Header from '../components/Header';
 import { getClientByPhone } from '../../api/sales/client/getClientByPhone';
 import { submitFinalEstimate } from '../../api/sales/client/submitFinalEstimate';
@@ -3082,6 +3083,64 @@ const FinalEstimatePage = () => {
     percentageOfMargin: 0,
     totalProjectCost: 0
   });
+  const [labourRates, setLabourRates] = useState([]);
+  const [transportRates, setTransportRates] = useState([]);
+  const [totalLabourCost, setTotalLabourCost] = useState(0);
+  const [totalTransportCost, setTotalTransportCost] = useState(0);
+
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const [labourRes, transportRes] = await Promise.all([
+          Api.get('/admin/labourcost/Sheeting'),
+          Api.get('/rates/getAllTransportation')
+        ]);
+        const sheetingRate = labourRes.data;
+        const weldingRes = await Api.get('/admin/labourcost/Welding');
+        const weldingRate = weldingRes.data;
+        setLabourRates([sheetingRate, weldingRate]);
+        setTransportRates(transportRes.data?.transportations || transportRes.data || []);
+      } catch (error) {
+        console.error('Error fetching rates:', error);
+      }
+    };
+    fetchRates();
+  }, []);
+
+  useEffect(() => {
+    if (labourRates.length === 0) return;
+    const sheetingRate = labourRates.find(r => r.category === 'Sheeting');
+    const weldingRate = labourRates.find(r => r.category === 'Welding');
+    const sheetingCost = 
+      (estimateData.labourData.sheetingLabour.localWorkers * (sheetingRate?.localWork || 0)) +
+      (estimateData.labourData.sheetingLabour.siteWorkers * (sheetingRate?.siteWork || 0));
+    const weldingCost =
+      (estimateData.labourData.weldingLabour.localWorkers * (weldingRate?.localWork || 0)) +
+      (estimateData.labourData.weldingLabour.siteWorkers * (weldingRate?.siteWork || 0));
+    const totalLabour = sheetingCost + weldingCost +
+      Number(estimateData.labourData.transportationLabour || 0) +
+      Number(estimateData.labourData.enquiryExpense || 0) +
+      Number(estimateData.labourData.foodAndAccommodation || 0);
+    setTotalLabourCost(totalLabour);
+  }, [estimateData.labourData, labourRates]);
+
+  useEffect(() => {
+    if (transportRates.length === 0) return;
+    let totalTransport = 0;
+    estimateData.transportations.forEach(t => {
+      const rate = transportRates.find(r => r.vehicleType === t.vehicleType);
+      if (rate) {
+        const cost = Math.max(
+          rate.minCharge,
+          t.totalKilometer * rate.perKmCharge * (t.numberOfTrips || 1)
+        );
+        totalTransport += cost;
+      }
+    });
+    totalTransport += Number(estimateData.cranePrice || 0);
+    totalTransport += Number(estimateData.otherExpenses || 0);
+    setTotalTransportCost(totalTransport);
+  }, [estimateData.transportations, estimateData.cranePrice, estimateData.otherExpenses, transportRates]);
 
   // Input change handlers
   const handleInputChange = (e) => {
@@ -3887,7 +3946,7 @@ const handleSubmitEstimate = async () => {
   <input
     type="text"
     className="w-full p-2 bg-gray-100 border rounded"
-    value={(selectedClient?.finalTransportationCost || 0).toFixed(2)}
+    value={`₹${totalTransportCost.toFixed(2)}`}
     readOnly
   />
 </div>
@@ -3987,7 +4046,7 @@ const handleSubmitEstimate = async () => {
           <input
             type="text"
             className="w-full p-2 bg-white border rounded"
-            value={`₹${(selectedClient?.labourCharge?.totalLabourCharge || 0).toFixed(2)}`}
+            value={`₹${totalLabourCost.toFixed(2)}`}
             readOnly
           />
         </div>

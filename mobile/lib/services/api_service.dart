@@ -158,4 +158,12 @@ class ApiService {
       'newPassword': newPassword,
     });
   }
+
+  static Future<Response> getAllProjectTypes() async {
+    return await _createDio().get('/admin/getAllProjectType');
+  }
+
+  static Future<Response> getAllCategories() async {
+    return await _createDio().get('/admin/getAllCategories');
+  }
 }

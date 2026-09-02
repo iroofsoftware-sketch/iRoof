@@ -71,91 +71,35 @@ class NotificationScreen extends StatelessWidget {
               ],
             ),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: 5, // Example with 5 notifications
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: ColorData.whitecolor,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            offset: const Offset(0, 4),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: ColorData.textbluecolor.withOpacity(0.1),
-                            child: Icon(
-                              Icons.notifications,
-                              color: ColorData.maincolor,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Notification Title ${index + 1}",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: ColorData.textblackcolor,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "This is a description of the notification. It provides additional details about the alert.",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: ColorData.textfieldunfocuscolor,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Just now",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: ColorData.textfieldunfocuscolor,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        // Handle dismissal of notification
-                                      },
-                                      child: Text(
-                                        "Dismiss",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: ColorData.cancelbuttoncolor,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.notifications_none,
+                      size: 80,
+                      color: Colors.grey[300],
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      "No notifications yet",
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey[500],
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  );
-                },
+                    SizedBox(height: 8),
+                    Text(
+                      "You will see notifications here when they arrive",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[400],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
