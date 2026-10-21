@@ -95,8 +95,15 @@ const PurchaseOrderPrintView = () => {
         {/* TOP ROW */}
         <div className="top-row">
           <div className="company-info">
-            <div className="company-name">I Roofing Enterprises</div>
-            <div className="company-sub">Engineering & Industrial Roofing Procurement</div>
+            <img
+              src="/logos/iroofing_wordmark_blue_small.png"
+              alt="I Roofing Enterprises"
+              style={{ maxHeight: 36, objectFit: 'contain', marginBottom: 6 }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <div className="company-sub" style={{ fontWeight: 600, color: '#0b2e59' }}>Engineering & Industrial Roofing Procurement</div>
             <div className="company-contact">Central Workshop & Logistics Hub, Kochi, Kerala, India</div>
             <div className="company-contact">Phone: +91 98470 00000 | Email: purchase@iroofing.in</div>
             <div className="company-contact">GSTIN: 32AABCU9603R1ZM</div>

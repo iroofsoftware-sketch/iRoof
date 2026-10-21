@@ -83,31 +83,14 @@ const LoginPage = () => {
         {/* TOP: Brand Identity */}
         <div style={{ padding: '48px 44px 0 44px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #c9940a 0%, #a37404 100%)',
-                color: '#ffffff',
-                fontWeight: 800,
-                fontSize: 18,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(201, 148, 10, 0.3)'
+            <img
+              src="/logos/iroofing_wordmark_white.png"
+              alt="iRoofing Enterprises"
+              style={{ maxHeight: 40, objectFit: 'contain' }}
+              onError={(e) => {
+                e.target.style.display = 'none';
               }}
-            >
-              I
-            </div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                I ROOFING
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#c9940a', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                ENTERPRISE MANAGEMENT
-              </div>
-            </div>
+            />
           </div>
 
           <div
@@ -231,9 +214,14 @@ const LoginPage = () => {
             borderBottom: '1px solid rgba(255,255,255,0.1)'
           }}
         >
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#ffffff' }}>
-            <span style={{ color: '#c9940a' }}>I </span>ROOFING ENTERPRISES
-          </div>
+          <img
+            src="/logos/iroofing_wordmark_white_small.png"
+            alt="iRoofing Enterprises"
+            style={{ maxHeight: 28, objectFit: 'contain' }}
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
         </div>
 
         <div

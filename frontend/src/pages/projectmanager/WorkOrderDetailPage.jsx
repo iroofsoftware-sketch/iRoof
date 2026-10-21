@@ -16,7 +16,8 @@ import {
   BuildOutlined,
   ShoppingCartOutlined,
   ToolOutlined,
-  EnvironmentOutlined
+  EnvironmentOutlined,
+  PrinterOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -105,7 +106,35 @@ const WorkOrderDetailPage = () => {
   const sCfg = STATUS_CONFIG[workOrder.status] || STATUS_CONFIG.draft;
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 40 }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 40 }} className="wo-detail-container">
+      {/* ── PRINT-ONLY BRAND HEADER ── */}
+      <div className="print-only-brand-header" style={{ display: 'none', marginBottom: 24, paddingBottom: 16, borderBottom: '2px solid #0b2e59' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <img
+              src="/logos/iroofing_wordmark_blue_small.png"
+              alt="iRoofing Enterprises"
+              style={{ maxHeight: 38, objectFit: 'contain' }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <div style={{ fontSize: 11, color: '#0b2e59', fontWeight: 600, marginTop: 4 }}>
+              Truss-Less Self-Supported Arch Roofing Systems
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#0b2e59' }}>PRODUCTION JOB CARD</div>
+            <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+              Work Order Ref: <strong>{workOrder.refCode}</strong>
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>
+              Printed: {dayjs().format('DD MMM YYYY, hh:mm A')}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── HEADER ── */}
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -135,7 +164,16 @@ const WorkOrderDetailPage = () => {
           <span className={`status-dot status-${workOrder.status}`} style={{ fontSize: 12.5, padding: '4px 12px' }}>
             {sCfg.label}
           </span>
-          <Button onClick={() => setStatusModalVisible(true)}>Change Status</Button>
+          <Button onClick={() => setStatusModalVisible(true)} className="no-print">Change Status</Button>
+          <Button
+            type="primary"
+            icon={<PrinterOutlined />}
+            onClick={() => window.print()}
+            className="no-print"
+            style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
+          >
+            Print Job Card
+          </Button>
         </Space>
       </div>
 
@@ -355,6 +393,32 @@ const WorkOrderDetailPage = () => {
           </Select>
         </div>
       </Modal>
+
+      <style>{`
+        @media print {
+          .no-print, header, .ant-layout-sider, .ant-layout-header, .ant-breadcrumb, .flowbar {
+            display: none !important;
+          }
+          .print-only-brand-header {
+            display: block !important;
+          }
+          body, .ant-layout, .ant-layout-content {
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .wo-detail-container {
+            max-width: 100% !important;
+            padding: 0 !important;
+          }
+          .content-card {
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: none !important;
+            break-inside: avoid;
+            margin-bottom: 16px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

@@ -93,9 +93,16 @@ const InvoicePrintView = () => {
         {/* TOP ROW */}
         <div className="top-row">
           <div className="company-info">
-            <div className="company-name">I Roofing Enterprises</div>
-            <div className="company-sub">Premium Roofing Solutions & Engineering</div>
-            <div className="company-contact">Kochi, Kerala, India</div>
+            <img
+              src="/logos/iroofing_wordmark_blue_small.png"
+              alt="I Roofing Enterprises"
+              style={{ maxHeight: 36, objectFit: 'contain', marginBottom: 6 }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <div className="company-sub" style={{ fontWeight: 600, color: '#0b2e59' }}>Truss-Less Self-Supported Arch Roofing Systems</div>
+            <div className="company-contact">Central Fabrication Hub, Chennai / Kochi, India</div>
             <div className="company-contact">Phone: +91 98470 00000 | Email: billing@iroofing.in</div>
             <div className="company-contact">GSTIN: 32AABCU9603R1ZM</div>
           </div>
