@@ -76,9 +76,9 @@ const DEFAULT_SECTIONS = [
 const seedDatabase = async () => {
   const mongoUri = process.env.MONGO_URI;
 
-  if (!mongoUri || mongoUri.includes(':@cluster')) {
+  if (!mongoUri || mongoUri.includes(':@cluster') || mongoUri.includes('YOUR_PASSWORD')) {
     console.error('\n❌ ERROR: Valid MONGO_URI not configured in backend/.env');
-    console.error('Please open backend/.env and replace MONGO_URI with your MongoDB Atlas connection string.\n');
+    console.error('Please open backend/.env and replace YOUR_PASSWORD with your actual Atlas database password.\n');
     process.exit(1);
   }
 
