@@ -11,6 +11,8 @@ import UsersPage from './pages/admin/UsersPage';
 import RateMastersPage from './pages/admin/RateMastersPage';
 import SalesDashboard from './pages/sales/SalesDashboard';
 import EnquiriesPage from './pages/sales/EnquiriesPage';
+import EstimationPage from './pages/sales/EstimationPage';
+import SavedEstimatesPage from './pages/sales/SavedEstimatesPage';
 import AccountsDashboard from './pages/accounts/AccountsDashboard';
 import DesignDashboard from './pages/design/DesignDashboard';
 import ProjectManagerDashboard from './pages/projectmanager/ProjectManagerDashboard';
@@ -56,8 +58,9 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={['sales', 'admin']} />}>
             <Route path="/sales/dashboard" element={<SalesDashboard />} />
             <Route path="/sales/enquiries" element={<EnquiriesPage />} />
-            <Route path="/sales/estimates" element={<SalesDashboard />} />
-            <Route path="/sales/estimates/new" element={<SalesDashboard />} />
+            <Route path="/sales/estimates" element={<SavedEstimatesPage />} />
+            <Route path="/sales/estimates/new" element={<EstimationPage />} />
+            <Route path="/sales/estimates/:id" element={<EstimationPage />} />
           </Route>
 
           {/* Accounts Routes */}

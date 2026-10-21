@@ -15,7 +15,8 @@ import {
   MobileOutlined,
   SafetyCertificateOutlined,
   MenuFoldOutlined,
-  MenuUnfoldOutlined
+  MenuUnfoldOutlined,
+  FolderOpenOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -53,7 +54,8 @@ const getRoleMenuItems = (role) => {
         { key: '/admin/users', icon: <TeamOutlined />, label: 'User Management' },
         { key: '/admin/rates', icon: <CalculatorOutlined />, label: 'Rate & Section Masters' },
         { key: '/sales/enquiries', icon: <FormOutlined />, label: 'Sales Enquiries' },
-        { key: '/sales/estimates/new', icon: <CalculatorOutlined />, label: 'Estimation Engine' }
+        { key: '/sales/estimates/new', icon: <CalculatorOutlined />, label: 'New Estimation' },
+        { key: '/sales/estimates', icon: <FolderOpenOutlined />, label: 'Saved Estimates' }
       ];
 
     case 'sales':
@@ -61,7 +63,7 @@ const getRoleMenuItems = (role) => {
         { key: '/sales/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
         { key: '/sales/enquiries', icon: <FormOutlined />, label: 'Enquiries' },
         { key: '/sales/estimates/new', icon: <CalculatorOutlined />, label: 'New Estimation' },
-        { key: '/sales/estimates', icon: <CalculatorOutlined />, label: 'Saved Estimates' }
+        { key: '/sales/estimates', icon: <FolderOpenOutlined />, label: 'Saved Estimates' }
       ];
 
     case 'accounts':
