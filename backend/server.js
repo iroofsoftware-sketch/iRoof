@@ -8,6 +8,7 @@ const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const enquiryRoutes = require('./src/routes/enquiryRoutes');
+const estimateRoutes = require('./src/routes/estimateRoutes');
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/enquiries', enquiryRoutes);
+app.use('/api/estimates', estimateRoutes);
 
 // 404 handler
 app.use((req, res) => {
