@@ -1,17 +1,25 @@
-import React from 'react';
-import { Row, Col, Table, Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Row, Col, Table, Button, Empty } from 'antd';
 import {
   ToolOutlined,
   CheckOutlined,
   InboxOutlined,
   WarningOutlined,
-  PlusOutlined,
-  CheckCircleOutlined
+  RightOutlined
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
+import api from '../../services/api';
 
 const WorkshopDashboard = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+
+  const [stats, setStats] = useState({ inProgress: 0, completed: 0, materialReady: 0, pending: 0 });
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const hour = new Date().getHours();
   const greetingTime = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
   const firstName = user?.name ? user.name.split(' ')[0] : 'Supervisor';
@@ -22,50 +30,83 @@ const WorkshopDashboard = () => {
     year: 'numeric'
   });
 
+  useEffect(() => {
+    const fetchWorkshopData = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get('/workshop-jobs/mine?limit=5');
+        if (res.data) {
+          if (res.data.stats) setStats(res.data.stats);
+          if (res.data.data) setJobs(res.data.data);
+        }
+      } catch (e) {
+        console.error('Error loading workshop dashboard:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWorkshopData();
+  }, []);
+
   const columns = [
     {
       title: 'REF',
-      dataIndex: 'ref',
-      key: 'ref',
-      render: (t) => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>{t}</span>
+      dataIndex: 'refCode',
+      key: 'refCode',
+      render: (t) => (
+        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>
+          {t || 'WJ-JOB'}
+        </span>
+      )
     },
     {
-      title: 'TITLE',
+      title: 'TITLE / CLIENT',
       dataIndex: 'title',
       key: 'title',
-      render: (t) => <span style={{ fontWeight: 500 }}>{t}</span>
+      render: (t, r) => (
+        <div>
+          <span style={{ fontWeight: 500 }}>{t}</span>
+          {r.workOrderId?.clientName && (
+            <div style={{ fontSize: 11, color: '#6b7280' }}>{r.workOrderId.clientName}</div>
+          )}
+        </div>
+      )
     },
     {
       title: 'ASSIGNED',
-      dataIndex: 'assigned',
       key: 'assigned',
-      render: (a) => <span style={{ color: '#6b7280' }}>{a}</span>
+      render: (_, r) => (
+        <span style={{ color: '#6b7280' }}>
+          {r.assignedTo?.name || 'Workshop Floor'}
+        </span>
+      )
     },
     {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
       render: (st) => (
-        <span className={`status-dot status-${st}`}>
-          <span style={{ textTransform: 'capitalize' }}>{st}</span>
+        <span className={`status-dot status-${st || 'new'}`}>
+          <span style={{ textTransform: 'capitalize' }}>{(st || 'pending').replace('_', ' ')}</span>
         </span>
       )
     },
     {
-      title: 'DATE',
-      dataIndex: 'date',
-      key: 'date',
-      render: (d) => <span style={{ color: '#6b7280', fontSize: 12 }}>{d}</span>
+      title: 'TARGET END',
+      dataIndex: 'endDate',
+      key: 'endDate',
+      render: (d) => (
+        <span style={{ color: '#6b7280', fontSize: 12 }}>
+          {d ? dayjs(d).format('DD/MM/YYYY') : 'In line'}
+        </span>
+      )
     }
-  ];
-
-  const dummyData = [
-    { key: '1', ref: 'FAB-301', title: 'Cantilever Truss Arc Bending & Welding (Bay 1-6)', assigned: 'Bay A Team', status: 'visited', date: '21/10/2026' },
-    { key: '2', ref: 'FAB-300', title: 'MS Base Plates & Gusset 16mm Drilling', assigned: 'Drill Station 2', status: 'approved', date: '20/10/2026' }
   ];
 
   return (
     <div>
+      {/* ── WELCOME ROW ── */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
           Good {greetingTime}, {firstName}
@@ -75,6 +116,7 @@ const WorkshopDashboard = () => {
         </div>
       </div>
 
+      {/* ── KPI ROW (4 Cards) ── */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
@@ -84,21 +126,21 @@ const WorkshopDashboard = () => {
                 <ToolOutlined />
               </div>
             </div>
-            <div className="stat-card__value">4</div>
-            <div className="stat-card__meta">Truss cutting & welding lines</div>
+            <div className="stat-card__value">{stats.inProgress || 0}</div>
+            <div className="stat-card__meta">Active fabrication on floor</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Completed Today</span>
+              <span className="stat-card__label">Completed Jobs</span>
               <div className="stat-card__icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
                 <CheckOutlined />
               </div>
             </div>
-            <div className="stat-card__value">8</div>
-            <div className="stat-card__meta">Fabricated components ready</div>
+            <div className="stat-card__value">{stats.completed || 0}</div>
+            <div className="stat-card__meta">Ready for dispatch / erection</div>
           </div>
         </Col>
 
@@ -110,40 +152,62 @@ const WorkshopDashboard = () => {
                 <InboxOutlined />
               </div>
             </div>
-            <div className="stat-card__value">16 MT</div>
-            <div className="stat-card__meta">Allocated steel in yard</div>
+            <div className="stat-card__value">{stats.materialReady || 0}</div>
+            <div className="stat-card__meta">BOM received & queued</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Delayed</span>
+              <span className="stat-card__label">Pending Line Setup</span>
               <div className="stat-card__icon" style={{ background: '#fef2f2', color: '#b91c1c' }}>
                 <WarningOutlined />
               </div>
             </div>
-            <div className="stat-card__value">0</div>
-            <div className="stat-card__meta">All lines on schedule</div>
+            <div className="stat-card__value">{stats.pending || 0}</div>
+            <div className="stat-card__meta">Awaiting drawing clearance</div>
           </div>
         </Col>
       </Row>
 
-      <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Button icon={<PlusOutlined />} style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}>
-          New Fabrication Job
-        </Button>
-        <Button icon={<CheckCircleOutlined />} style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}>
-          Log Inspection
+      {/* ── QUICK ACTIONS ── */}
+      <div style={{ marginTop: 20, display: 'flex', gap: 10 }}>
+        <Button
+          type="default"
+          icon={<ToolOutlined />}
+          onClick={() => navigate('/workshop/jobs')}
+          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
+        >
+          View Fabrication Line
         </Button>
       </div>
 
+      {/* ── RECENT ACTIVITY TABLE ── */}
       <div className="content-card" style={{ marginTop: 20 }}>
         <div className="content-card__header">
-          <div className="content-card__title">Recent Activity</div>
-          <span style={{ color: '#0b315d', fontSize: 13, cursor: 'pointer' }}>View all →</span>
+          <span className="content-card__title">Recent Fabrication Jobs</span>
+          <Button
+            type="link"
+            onClick={() => navigate('/workshop/jobs')}
+            style={{ color: '#0b315d', fontSize: 13, padding: 0 }}
+          >
+            View all →
+          </Button>
         </div>
-        <Table columns={columns} dataSource={dummyData} size="small" pagination={false} />
+        <Table
+          columns={columns}
+          dataSource={jobs}
+          rowKey="_id"
+          loading={loading}
+          pagination={false}
+          size="small"
+          locale={{ emptyText: <Empty description="No recent fabrication jobs" /> }}
+          onRow={() => ({
+            onClick: () => navigate('/workshop/jobs'),
+            style: { cursor: 'pointer' }
+          })}
+        />
       </div>
     </div>
   );

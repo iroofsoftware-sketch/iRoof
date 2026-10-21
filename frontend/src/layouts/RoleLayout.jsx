@@ -89,20 +89,20 @@ const getRoleMenuConfig = (role) => {
     case 'purchase':
       return [
         { key: '/purchase', icon: <DashboardOutlined />, label: 'Dashboard' },
-        { key: '/purchase/orders', icon: <ShoppingCartOutlined />, label: 'Purchase Orders' },
+        { key: '/purchase/requests', icon: <ShoppingCartOutlined />, label: 'Requests' },
         { key: '/purchase/suppliers', icon: <ShopOutlined />, label: 'Suppliers' }
       ];
 
     case 'workshop':
       return [
         { key: '/workshop', icon: <DashboardOutlined />, label: 'Dashboard' },
-        { key: '/workshop/jobs', icon: <ToolOutlined />, label: 'Fabrication Jobs' }
+        { key: '/workshop/jobs', icon: <ToolOutlined />, label: 'Fabrication' }
       ];
 
     case 'sitevisitor':
       return [
         { key: '/sitevisitor', icon: <DashboardOutlined />, label: 'Dashboard' },
-        { key: '/sitevisitor/sites', icon: <EnvironmentOutlined />, label: 'My Sites' }
+        { key: '/sitevisitor/visits', icon: <EnvironmentOutlined />, label: 'Site Visits' }
       ];
 
     default:

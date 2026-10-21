@@ -23,7 +23,8 @@ import {
   RadiusUpleftOutlined,
   ColumnHeightOutlined,
   ForkOutlined,
-  MinusOutlined
+  MinusOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useReactToPrint } from 'react-to-print';
@@ -88,6 +89,7 @@ const EstimationPage = () => {
   const [savedStatus, setSavedStatus] = useState('draft');
   const [lastSavedTime, setLastSavedTime] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [approving, setApproving] = useState(false);
 
   // Selected Model State for the 5 interactive cards
   const [selectedModel, setSelectedModel] = useState('Normal Cantilever');
@@ -313,6 +315,26 @@ const EstimationPage = () => {
       message.error('Failed to load estimates');
     } finally {
       setLoadingSavedList(false);
+    }
+  };
+
+  // Approve estimate
+  const handleApproveEstimate = async () => {
+    let currentId = estimateId;
+    if (!currentId) {
+      message.warning('Please save this estimate before approving');
+      return;
+    }
+    setApproving(true);
+    try {
+      await api.patch(`/estimates/${currentId}`, { status: 'approved' });
+      setSavedStatus('approved');
+      message.success('Estimate approved. Project Manager can now create a Work Order.');
+    } catch (err) {
+      console.error('Approve estimate error:', err);
+      message.error(err.response?.data?.message || 'Failed to approve estimate');
+    } finally {
+      setApproving(false);
     }
   };
 
@@ -900,6 +922,17 @@ const EstimationPage = () => {
           >
             Save Draft
           </Button>
+          {(savedStatus === 'draft' || savedStatus === 'submitted' || savedStatus === 'saved') && (
+            <Button
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              loading={approving}
+              onClick={handleApproveEstimate}
+              style={{ background: '#15803d', borderColor: '#15803d' }}
+            >
+              Approve Estimate
+            </Button>
+          )}
           <Button
             type="primary"
             icon={<PrinterOutlined />}

@@ -17,6 +17,7 @@ router.post('/', saveEstimate);
 router.get('/', getEstimates);
 router.get('/:id', getEstimateById);
 router.put('/:id', updateEstimate);
+router.patch('/:id', updateEstimate);
 router.delete('/:id', authorize('admin', 'sales'), deleteEstimate);
 
 module.exports = router;

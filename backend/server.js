@@ -53,6 +53,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/estimates', estimateRoutes);
+app.use('/api/workorders', require('./src/routes/workOrderRoutes'));
+app.use('/api/design-tasks', require('./src/routes/designTaskRoutes'));
+app.use('/api/purchase-requests', require('./src/routes/purchaseRequestRoutes'));
+app.use('/api/workshop-jobs', require('./src/routes/workshopJobRoutes'));
+app.use('/api/site-visits', require('./src/routes/siteVisitRoutes'));
 
 // 404 handler
 app.use((req, res) => {

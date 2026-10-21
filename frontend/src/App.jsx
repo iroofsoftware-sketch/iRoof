@@ -17,9 +17,15 @@ import SavedEstimatesPage from './pages/sales/SavedEstimatesPage';
 import AccountsDashboard from './pages/accounts/AccountsDashboard';
 import DesignDashboard from './pages/design/DesignDashboard';
 import ProjectManagerDashboard from './pages/projectmanager/ProjectManagerDashboard';
+import WorkOrdersPage from './pages/projectmanager/WorkOrdersPage';
+import WorkOrderDetailPage from './pages/projectmanager/WorkOrderDetailPage';
 import PurchaseDashboard from './pages/purchase/PurchaseDashboard';
+import PurchaseRequestsPage from './pages/purchase/PurchaseRequestsPage';
 import WorkshopDashboard from './pages/workshop/WorkshopDashboard';
+import WorkshopJobsPage from './pages/workshop/WorkshopJobsPage';
 import SiteVisitorDashboard from './pages/sitevisitor/SiteVisitorDashboard';
+import SiteVisitsPage from './pages/sitevisitor/SiteVisitsPage';
+import DesignTasksPage from './pages/design/DesignTasksPage';
 
 import { useAuthStore } from './store/authStore';
 
@@ -154,22 +160,24 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['design', 'admin']} />}>
               <Route path="/design" element={<DesignDashboard />} />
               <Route path="/design/dashboard" element={<DesignDashboard />} />
-              <Route path="/design/drawings" element={<DesignDashboard />} />
+              <Route path="/design/drawings" element={<DesignTasksPage />} />
             </Route>
 
             {/* Project Manager Routes */}
             <Route element={<ProtectedRoute allowedRoles={['projectmanager', 'admin']} />}>
               <Route path="/projectmanager" element={<ProjectManagerDashboard />} />
               <Route path="/projectmanager/dashboard" element={<ProjectManagerDashboard />} />
-              <Route path="/projectmanager/workorders" element={<ProjectManagerDashboard />} />
-              <Route path="/projectmanager/projects" element={<ProjectManagerDashboard />} />
+              <Route path="/projectmanager/workorders" element={<WorkOrdersPage />} />
+              <Route path="/projectmanager/workorders/:id" element={<WorkOrderDetailPage />} />
+              <Route path="/projectmanager/projects" element={<WorkOrdersPage />} />
             </Route>
 
             {/* Purchase Routes */}
             <Route element={<ProtectedRoute allowedRoles={['purchase', 'admin']} />}>
               <Route path="/purchase" element={<PurchaseDashboard />} />
               <Route path="/purchase/dashboard" element={<PurchaseDashboard />} />
-              <Route path="/purchase/orders" element={<PurchaseDashboard />} />
+              <Route path="/purchase/requests" element={<PurchaseRequestsPage />} />
+              <Route path="/purchase/orders" element={<PurchaseRequestsPage />} />
               <Route path="/purchase/suppliers" element={<PurchaseDashboard />} />
             </Route>
 
@@ -177,15 +185,15 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['workshop', 'admin']} />}>
               <Route path="/workshop" element={<WorkshopDashboard />} />
               <Route path="/workshop/dashboard" element={<WorkshopDashboard />} />
-              <Route path="/workshop/jobs" element={<WorkshopDashboard />} />
+              <Route path="/workshop/jobs" element={<WorkshopJobsPage />} />
             </Route>
 
             {/* Site Visitor Routes */}
             <Route element={<ProtectedRoute allowedRoles={['sitevisitor', 'admin']} />}>
               <Route path="/sitevisitor" element={<SiteVisitorDashboard />} />
               <Route path="/sitevisitor/dashboard" element={<SiteVisitorDashboard />} />
-              <Route path="/sitevisitor/sites" element={<SiteVisitorDashboard />} />
-              <Route path="/sitevisitor/visits" element={<SiteVisitorDashboard />} />
+              <Route path="/sitevisitor/visits" element={<SiteVisitsPage />} />
+              <Route path="/sitevisitor/sites" element={<SiteVisitsPage />} />
             </Route>
           </Route>
 

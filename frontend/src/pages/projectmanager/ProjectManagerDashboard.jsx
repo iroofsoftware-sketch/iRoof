@@ -1,5 +1,5 @@
-import React from 'react';
-import { Row, Col, Table, Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Row, Col, Table, Button, Empty } from 'antd';
 import {
   ProfileOutlined,
   CheckCircleOutlined,
@@ -8,10 +8,19 @@ import {
   PlusOutlined,
   CalendarOutlined
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
+import api from '../../services/api';
 
 const ProjectManagerDashboard = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+
+  const [stats, setStats] = useState({ total: 0, active: 0, on_hold: 0, completed: 0 });
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const hour = new Date().getHours();
   const greetingTime = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
   const firstName = user?.name ? user.name.split(' ')[0] : 'Manager';
@@ -22,50 +31,86 @@ const ProjectManagerDashboard = () => {
     year: 'numeric'
   });
 
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      try {
+        const [statsRes, listRes] = await Promise.all([
+          api.get('/workorders/stats').catch(() => ({ data: { data: {} } })),
+          api.get('/workorders?limit=5').catch(() => ({ data: { data: [] } }))
+        ]);
+
+        if (statsRes.data?.data) {
+          setStats(statsRes.data.data);
+        }
+        if (listRes.data?.data) {
+          setRecentOrders(listRes.data.data);
+        }
+      } catch (e) {
+        console.error('Error loading PM dashboard:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   const columns = [
     {
       title: 'REF',
-      dataIndex: 'ref',
-      key: 'ref',
-      render: (t) => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>{t}</span>
+      dataIndex: 'refCode',
+      key: 'refCode',
+      render: (t) => (
+        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>
+          {t || 'WO-REF'}
+        </span>
+      )
     },
     {
-      title: 'TITLE',
-      dataIndex: 'title',
-      key: 'title',
-      render: (t) => <span style={{ fontWeight: 500 }}>{t}</span>
+      title: 'CLIENT / MODEL',
+      key: 'client',
+      render: (_, r) => (
+        <div>
+          <span style={{ fontWeight: 500, color: '#111827' }}>{r.clientName}</span>
+          <div style={{ fontSize: 11, color: '#6b7280' }}>{r.roofModel}</div>
+        </div>
+      )
     },
     {
-      title: 'ASSIGNED',
-      dataIndex: 'assigned',
+      title: 'ASSIGNED PM',
       key: 'assigned',
-      render: (a) => <span style={{ color: '#6b7280' }}>{a}</span>
+      render: (_, r) => (
+        <span style={{ color: '#6b7280' }}>
+          {r.assignedPM?.name || user?.name || 'Project Manager'}
+        </span>
+      )
     },
     {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
       render: (st) => (
-        <span className={`status-dot status-${st}`}>
-          <span style={{ textTransform: 'capitalize' }}>{st}</span>
+        <span className={`status-dot status-${st || 'new'}`}>
+          <span style={{ textTransform: 'capitalize' }}>{(st || 'active').replace('_', ' ')}</span>
         </span>
       )
     },
     {
-      title: 'DATE',
-      dataIndex: 'date',
-      key: 'date',
-      render: (d) => <span style={{ color: '#6b7280', fontSize: 12 }}>{d}</span>
+      title: 'TARGET DATE',
+      dataIndex: 'targetDate',
+      key: 'targetDate',
+      render: (d) => (
+        <span style={{ color: '#6b7280', fontSize: 12 }}>
+          {d ? dayjs(d).format('DD/MM/YYYY') : '—'}
+        </span>
+      )
     }
-  ];
-
-  const dummyData = [
-    { key: '1', ref: 'WO-204', title: 'Fabrication & Erection of 18m Auditorium Shed', assigned: 'Team North', status: 'approved', date: '21/10/2026' },
-    { key: '2', ref: 'WO-203', title: 'Simply Supported Roof - Foundation Anchor Alignment', assigned: 'Team Central', status: 'visited', date: '19/10/2026' }
   ];
 
   return (
     <div>
+      {/* ── WELCOME ROW ── */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
           Good {greetingTime}, {firstName}
@@ -75,6 +120,7 @@ const ProjectManagerDashboard = () => {
         </div>
       </div>
 
+      {/* ── KPI ROW (4 Cards) ── */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
@@ -84,8 +130,8 @@ const ProjectManagerDashboard = () => {
                 <ProfileOutlined />
               </div>
             </div>
-            <div className="stat-card__value">5</div>
-            <div className="stat-card__meta">Active roofing sites</div>
+            <div className="stat-card__value">{stats.active || 0}</div>
+            <div className="stat-card__meta">Active fabrication & site projects</div>
           </div>
         </Col>
 
@@ -97,53 +143,83 @@ const ProjectManagerDashboard = () => {
                 <CheckCircleOutlined />
               </div>
             </div>
-            <div className="stat-card__value">4</div>
-            <div className="stat-card__meta">Progress on milestone</div>
+            <div className="stat-card__value">{stats.active || 0}</div>
+            <div className="stat-card__meta">Progressing according to schedule</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Delayed</span>
+              <span className="stat-card__label">On Hold / Delayed</span>
               <div className="stat-card__icon" style={{ background: '#fef2f2', color: '#b91c1c' }}>
                 <WarningOutlined />
               </div>
             </div>
-            <div className="stat-card__value">1</div>
-            <div className="stat-card__meta">Material delivery bottleneck</div>
+            <div className="stat-card__value">{stats.on_hold || 0}</div>
+            <div className="stat-card__meta">Site clearance or supply pending</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Completed</span>
+              <span className="stat-card__label">Completed Projects</span>
               <div className="stat-card__icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
                 <CheckSquareOutlined />
               </div>
             </div>
-            <div className="stat-card__value">12</div>
-            <div className="stat-card__meta">Handed over this quarter</div>
+            <div className="stat-card__value">{stats.completed || 0}</div>
+            <div className="stat-card__meta">Successfully handed over</div>
           </div>
         </Col>
       </Row>
 
+      {/* ── QUICK ACTIONS ── */}
       <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Button icon={<PlusOutlined />} style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}>
-          New Work Order
+        <Button
+          type="default"
+          icon={<PlusOutlined />}
+          onClick={() => navigate('/projectmanager/workorders')}
+          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
+        >
+          Manage Work Orders
         </Button>
-        <Button icon={<CalendarOutlined />} style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}>
-          Schedule Site Visit
+        <Button
+          type="default"
+          icon={<CalendarOutlined />}
+          onClick={() => navigate('/sitevisitor/visits')}
+          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
+        >
+          Site Schedules
         </Button>
       </div>
 
+      {/* ── RECENT ACTIVITY TABLE ── */}
       <div className="content-card" style={{ marginTop: 20 }}>
         <div className="content-card__header">
-          <div className="content-card__title">Recent Activity</div>
-          <span style={{ color: '#0b315d', fontSize: 13, cursor: 'pointer' }}>View all →</span>
+          <span className="content-card__title">Recent Work Orders</span>
+          <Button
+            type="link"
+            onClick={() => navigate('/projectmanager/workorders')}
+            style={{ color: '#0b315d', fontSize: 13, padding: 0 }}
+          >
+            View all →
+          </Button>
         </div>
-        <Table columns={columns} dataSource={dummyData} size="small" pagination={false} />
+        <Table
+          columns={columns}
+          dataSource={recentOrders}
+          rowKey="_id"
+          loading={loading}
+          pagination={false}
+          size="small"
+          locale={{ emptyText: <Empty description="No recent work orders" /> }}
+          onRow={(r) => ({
+            onClick: () => navigate(`/projectmanager/workorders/${r._id}`),
+            style: { cursor: 'pointer' }
+          })}
+        />
       </div>
     </div>
   );
