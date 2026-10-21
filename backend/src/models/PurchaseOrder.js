@@ -40,13 +40,12 @@ const purchaseOrderSchema = new mongoose.Schema(
 );
 
 // Auto refCode
-purchaseOrderSchema.pre('save', async function (next) {
+purchaseOrderSchema.pre('save', async function () {
   if (this.isNew && !this.refCode) {
     const year = new Date().getFullYear();
     const count = await this.constructor.countDocuments();
     this.refCode = `PO-${year}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('PurchaseOrder', purchaseOrderSchema);

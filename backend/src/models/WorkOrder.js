@@ -33,13 +33,12 @@ const workOrderSchema = new mongoose.Schema(
 
 // Auto-generate refCode before save:
 // WO-2025-0001 format, padded 4 digits, year from current year
-workOrderSchema.pre('save', async function (next) {
+workOrderSchema.pre('save', async function () {
   if (this.isNew && !this.refCode) {
     const year = new Date().getFullYear();
     const count = await this.constructor.countDocuments();
     this.refCode = `WO-${year}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('WorkOrder', workOrderSchema);

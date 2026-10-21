@@ -45,14 +45,13 @@ const invoiceSchema = new mongoose.Schema(
 );
 
 // Auto refCode & amountDue calculation
-invoiceSchema.pre('save', async function (next) {
+invoiceSchema.pre('save', async function () {
   if (this.isNew && !this.refCode) {
     const year = new Date().getFullYear();
     const count = await this.constructor.countDocuments();
     this.refCode = `INV-${year}-${String(count + 1).padStart(4, '0')}`;
   }
   this.amountDue = Math.max(0, (this.grandTotal || 0) - (this.amountPaid || 0));
-  next();
 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

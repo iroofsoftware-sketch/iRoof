@@ -21,13 +21,12 @@ const workshopJobSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-workshopJobSchema.pre('save', async function (next) {
+workshopJobSchema.pre('save', async function () {
   if (this.isNew && !this.refCode) {
     const year = new Date().getFullYear();
     const count = await this.constructor.countDocuments();
     this.refCode = `WJ-${year}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('WorkshopJob', workshopJobSchema);
