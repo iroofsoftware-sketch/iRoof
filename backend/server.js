@@ -58,6 +58,8 @@ app.use('/api/design-tasks', require('./src/routes/designTaskRoutes'));
 app.use('/api/purchase-requests', require('./src/routes/purchaseRequestRoutes'));
 app.use('/api/workshop-jobs', require('./src/routes/workshopJobRoutes'));
 app.use('/api/site-visits', require('./src/routes/siteVisitRoutes'));
+app.use('/api/invoices', require('./src/routes/invoiceRoutes'));
+app.use('/api/payments', require('./src/routes/paymentRoutes'));
 
 // 404 handler
 app.use((req, res) => {

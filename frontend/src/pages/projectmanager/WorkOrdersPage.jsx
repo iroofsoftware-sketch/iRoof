@@ -26,7 +26,8 @@ import {
   CloseCircleOutlined,
   AppstoreOutlined,
   EditOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -364,17 +365,33 @@ const WorkOrdersPage = () => {
       key: 'actions',
       align: 'right',
       render: (_, r) => (
-        <Button
-          type="text"
-          size="small"
-          icon={<EyeOutlined style={{ color: '#0b315d' }} />}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenDrawer(r);
-          }}
-        >
-          View
-        </Button>
+        <Space size={4}>
+          {r.status === 'completed' && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<FileTextOutlined />}
+              style={{ background: '#15803d', borderColor: '#15803d', fontSize: 12 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/accounts/invoices?workOrderId=${r._id}`);
+              }}
+            >
+              Invoice
+            </Button>
+          )}
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined style={{ color: '#0b315d' }} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDrawer(r);
+            }}
+          >
+            View
+          </Button>
+        </Space>
       )
     }
   ];

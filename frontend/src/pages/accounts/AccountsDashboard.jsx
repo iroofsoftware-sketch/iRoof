@@ -1,17 +1,31 @@
-import React from 'react';
-import { Row, Col, Table, Button, Empty } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Row, Col, Table, Button, Spin, Tag } from 'antd';
 import {
   FileOutlined,
   DollarOutlined,
   WarningOutlined,
   CalculatorOutlined,
   PlusOutlined,
-  CheckCircleOutlined
+  CheckCircleOutlined,
+  ArrowRightOutlined
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
+import { getInvoiceStats, getInvoices } from '../../utils/api';
 
 const AccountsDashboard = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    overdueCount: 0,
+    thisMonthReceived: 0,
+    totalOutstanding: 0,
+    thisMonthBilled: 0
+  });
+  const [recentInvoices, setRecentInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const hour = new Date().getHours();
   const greetingTime = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
   const firstName = user?.name ? user.name.split(' ')[0] : 'Accounts';
@@ -22,47 +36,108 @@ const AccountsDashboard = () => {
     year: 'numeric'
   });
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [statsRes, invoicesRes] = await Promise.all([
+        getInvoiceStats(),
+        getInvoices({ limit: 5 })
+      ]);
+
+      if (statsRes.data?.success && statsRes.data.data) {
+        setStats(statsRes.data.data);
+      }
+      if (invoicesRes.data?.success && invoicesRes.data.data) {
+        setRecentInvoices(invoicesRes.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching accounts dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const columns = [
     {
-      title: 'REF',
-      dataIndex: 'ref',
-      key: 'ref',
-      render: (t) => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>{t}</span>
+      title: 'INVOICE #',
+      dataIndex: 'refCode',
+      key: 'refCode',
+      width: 140,
+      render: (t) => (
+        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>
+          {t}
+        </span>
+      )
     },
     {
-      title: 'TITLE',
-      dataIndex: 'title',
-      key: 'title',
-      render: (t) => <span style={{ fontWeight: 500 }}>{t}</span>
+      title: 'CLIENT',
+      dataIndex: 'clientName',
+      key: 'clientName',
+      render: (t) => <span style={{ fontWeight: 500, color: '#111827' }}>{t}</span>
     },
     {
-      title: 'ASSIGNED',
-      dataIndex: 'assigned',
-      key: 'assigned',
-      render: (a) => <span style={{ color: '#6b7280' }}>{a}</span>
+      title: 'GRAND TOTAL',
+      dataIndex: 'grandTotal',
+      key: 'grandTotal',
+      align: 'right',
+      render: (val) => (
+        <span style={{ fontWeight: 600, color: '#111827' }}>
+          ₹ {Number(val || 0).toLocaleString('en-IN')}
+        </span>
+      )
     },
     {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
-      render: (st) => (
-        <span className={`status-dot status-${st}`}>
-          <span style={{ textTransform: 'capitalize' }}>{st}</span>
-        </span>
-      )
+      render: (st, record) => {
+        const isOverdue =
+          st !== 'paid' &&
+          st !== 'cancelled' &&
+          record.dueDate &&
+          new Date(record.dueDate) < new Date();
+        const displayStatus = isOverdue ? 'overdue' : st;
+
+        const colorMap = {
+          draft: 'default',
+          sent: 'blue',
+          partial: 'orange',
+          paid: 'success',
+          overdue: 'error',
+          cancelled: 'default'
+        };
+
+        return (
+          <span className={`status-dot status-${displayStatus}`}>
+            <span style={{ textTransform: 'capitalize' }}>{displayStatus}</span>
+          </span>
+        );
+      }
     },
     {
-      title: 'DATE',
-      dataIndex: 'date',
-      key: 'date',
-      render: (d) => <span style={{ color: '#6b7280', fontSize: 12 }}>{d}</span>
+      title: 'DUE DATE',
+      dataIndex: 'dueDate',
+      key: 'dueDate',
+      render: (d, record) => {
+        const isOverdue =
+          record.status !== 'paid' &&
+          record.status !== 'cancelled' &&
+          d &&
+          new Date(d) < new Date();
+        return (
+          <span style={{ color: isOverdue ? '#b91c1c' : '#6b7280', fontSize: 12, fontWeight: isOverdue ? 600 : 400 }}>
+            {d ? dayjs(d).format('DD MMM YYYY') : '—'}
+          </span>
+        );
+      }
     }
   ];
 
-  const dummyData = [
-    { key: '1', ref: 'INV-1004', title: 'Advance Invoice - Acme Factory Shed', assigned: 'S. Accounts', status: 'approved', date: '21/10/2026' },
-    { key: '2', ref: 'INV-1003', title: 'Progress Payment - Cantilever Project', assigned: 'M. Nair', status: 'visited', date: '19/10/2026' }
-  ];
+  const gstPayable = Math.round((stats.totalOutstanding || 0) * 0.18);
 
   return (
     <div>
@@ -82,12 +157,14 @@ const AccountsDashboard = () => {
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span className="stat-card__label">Invoices Due</span>
-              <div className="stat-card__icon" style={{ background: '#fff7ed', color: '#c2410c' }}>
+              <div className="stat-card__icon" style={{ background: '#fef2f2', color: '#b91c1c' }}>
                 <FileOutlined />
               </div>
             </div>
-            <div className="stat-card__value">4</div>
-            <div className="stat-card__meta">₹1,85,000 pending collection</div>
+            <div className="stat-card__value" style={{ color: stats.overdueCount > 0 ? '#b91c1c' : '#111827' }}>
+              {stats.overdueCount || 0}
+            </div>
+            <div className="stat-card__meta">Overdue balance accounts</div>
           </div>
         </Col>
 
@@ -99,7 +176,9 @@ const AccountsDashboard = () => {
                 <DollarOutlined />
               </div>
             </div>
-            <div className="stat-card__value">₹8.4L</div>
+            <div className="stat-card__value" style={{ color: '#15803d' }}>
+              ₹ {Number(stats.thisMonthReceived || 0).toLocaleString('en-IN')}
+            </div>
             <div className="stat-card__meta">Direct client receipts</div>
           </div>
         </Col>
@@ -108,12 +187,14 @@ const AccountsDashboard = () => {
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span className="stat-card__label">Outstanding Amount</span>
-              <div className="stat-card__icon" style={{ background: '#fef2f2', color: '#b91c1c' }}>
+              <div className="stat-card__icon" style={{ background: '#fff7ed', color: '#c2410c' }}>
                 <WarningOutlined />
               </div>
             </div>
-            <div className="stat-card__value">₹3.2L</div>
-            <div className="stat-card__meta">Overdue balance accounts</div>
+            <div className="stat-card__value" style={{ color: '#c2410c' }}>
+              ₹ {Number(stats.totalOutstanding || 0).toLocaleString('en-IN')}
+            </div>
+            <div className="stat-card__meta">Pending client collection</div>
           </div>
         </Col>
 
@@ -125,7 +206,9 @@ const AccountsDashboard = () => {
                 <CalculatorOutlined />
               </div>
             </div>
-            <div className="stat-card__value">₹64,200</div>
+            <div className="stat-card__value" style={{ color: '#1e40af' }}>
+              ₹ {Number(gstPayable).toLocaleString('en-IN')}
+            </div>
             <div className="stat-card__meta">18% output tax liability</div>
           </div>
         </Col>
@@ -133,10 +216,19 @@ const AccountsDashboard = () => {
 
       {/* C) QUICK ACTIONS */}
       <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Button icon={<PlusOutlined />} style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => navigate('/accounts/invoices')}
+          style={{ background: '#0b315d', borderColor: '#0b315d', fontWeight: 500 }}
+        >
           New Invoice
         </Button>
-        <Button icon={<CheckCircleOutlined />} style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}>
+        <Button
+          icon={<CheckCircleOutlined />}
+          onClick={() => navigate('/accounts/invoices')}
+          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
+        >
           Record Payment
         </Button>
       </div>
@@ -145,9 +237,25 @@ const AccountsDashboard = () => {
       <div className="content-card" style={{ marginTop: 20 }}>
         <div className="content-card__header">
           <div className="content-card__title">Recent Activity</div>
-          <span style={{ color: '#0b315d', fontSize: 13, cursor: 'pointer' }}>View all →</span>
+          <span
+            style={{ color: '#0b315d', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}
+            onClick={() => navigate('/accounts/invoices')}
+          >
+            View all →
+          </span>
         </div>
-        <Table columns={columns} dataSource={dummyData} size="small" pagination={false} />
+        <Table
+          columns={columns}
+          dataSource={recentInvoices}
+          rowKey="_id"
+          size="small"
+          pagination={false}
+          loading={loading}
+          onRow={(record) => ({
+            onClick: () => navigate('/accounts/invoices'),
+            style: { cursor: 'pointer' }
+          })}
+        />
       </div>
     </div>
   );

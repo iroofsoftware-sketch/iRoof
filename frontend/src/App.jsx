@@ -15,6 +15,8 @@ import EnquiriesPage from './pages/sales/EnquiriesPage';
 import EstimationPage from './pages/sales/EstimationPage';
 import SavedEstimatesPage from './pages/sales/SavedEstimatesPage';
 import AccountsDashboard from './pages/accounts/AccountsDashboard';
+import InvoicesPage from './pages/accounts/InvoicesPage';
+import InvoicePrintView from './pages/accounts/InvoicePrintView';
 import DesignDashboard from './pages/design/DesignDashboard';
 import ProjectManagerDashboard from './pages/projectmanager/ProjectManagerDashboard';
 import WorkOrdersPage from './pages/projectmanager/WorkOrdersPage';
@@ -153,7 +155,7 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['accounts', 'admin']} />}>
               <Route path="/accounts" element={<AccountsDashboard />} />
               <Route path="/accounts/dashboard" element={<AccountsDashboard />} />
-              <Route path="/accounts/invoices" element={<AccountsDashboard />} />
+              <Route path="/accounts/invoices" element={<InvoicesPage />} />
             </Route>
 
             {/* Design Routes */}
@@ -195,6 +197,11 @@ function App() {
               <Route path="/sitevisitor/visits" element={<SiteVisitsPage />} />
               <Route path="/sitevisitor/sites" element={<SiteVisitsPage />} />
             </Route>
+          </Route>
+
+          {/* Standalone Printable Invoice View (clean — no sidebar, no nav) */}
+          <Route element={<ProtectedRoute allowedRoles={['accounts', 'admin']} />}>
+            <Route path="/accounts/invoices/:id/print" element={<InvoicePrintView />} />
           </Route>
 
           {/* Catch-all */}

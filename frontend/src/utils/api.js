@@ -33,3 +33,16 @@ export const updateWorkshopJob = (id, data) => api.patch(`/workshop-jobs/${id}`,
 export const getSiteVisits = (params) => api.get('/site-visits', { params });
 export const getMySiteVisits = (params) => api.get('/site-visits/mine', { params });
 export const updateSiteVisit = (id, data) => api.patch(`/site-visits/${id}`, data);
+
+// Invoices
+export const getInvoices = (params) => api.get('/invoices', { params });
+export const getInvoiceStats = () => api.get('/invoices/stats');
+export const getInvoiceById = (id) => api.get(`/invoices/${id}`);
+export const createInvoice = (data) => api.post('/invoices', data);
+export const updateInvoice = (id, data) => api.patch(`/invoices/${id}`, data);
+export const deleteInvoice = (id) => api.delete(`/invoices/${id}`);
+
+// Payments
+export const recordPayment = (data) => api.post('/payments', data);
+export const getPaymentsByInvoice = (invoiceId) => api.get(`/payments?invoiceId=${invoiceId}`);
+export const deletePayment = (id) => api.delete(`/payments/${id}`);
