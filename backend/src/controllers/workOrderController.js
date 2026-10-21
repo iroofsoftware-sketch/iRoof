@@ -275,6 +275,7 @@ const updateWorkOrder = async (req, res) => {
     if (targetDate !== undefined) workOrder.targetDate = targetDate;
     if (notes !== undefined) workOrder.notes = notes;
     if (assignedPM) workOrder.assignedPM = assignedPM;
+    if (req.body.attachments !== undefined) workOrder.attachments = req.body.attachments;
 
     await workOrder.save();
 

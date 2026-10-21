@@ -29,7 +29,8 @@ import {
   BellOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  MenuOutlined
+  MenuOutlined,
+  ContactsOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -52,6 +53,7 @@ const getRoleMenuConfig = (role) => {
     case 'admin':
       return [
         { key: '/admin', icon: <DashboardOutlined />, label: 'Dashboard' },
+        { key: '/admin/customers', icon: <ContactsOutlined />, label: 'Customers (CRM)' },
         { key: '/admin/users', icon: <TeamOutlined />, label: 'Users' },
         { key: '/admin/rate-masters', icon: <ControlOutlined />, label: 'Rate Masters' },
         { key: '/admin/section-masters', icon: <AppstoreOutlined />, label: 'Section Masters' },
@@ -63,7 +65,8 @@ const getRoleMenuConfig = (role) => {
     case 'sales':
       return [
         { key: '/sales', icon: <DashboardOutlined />, label: 'Dashboard' },
-        { key: '/sales/enquiries', icon: <FileTextOutlined />, label: 'Enquiries' },
+        { key: '/sales/customers', icon: <ContactsOutlined />, label: 'Customers (CRM)' },
+        { key: '/sales/enquiries', icon: <FileTextOutlined />, label: 'Leads & Pipeline' },
         { key: '/sales/estimates/new', icon: <CalculatorOutlined />, label: 'New Estimate' },
         { key: '/sales/estimates', icon: <FolderOpenOutlined />, label: 'Saved Estimates' }
       ];
@@ -71,6 +74,7 @@ const getRoleMenuConfig = (role) => {
     case 'accounts':
       return [
         { key: '/accounts', icon: <DashboardOutlined />, label: 'Dashboard' },
+        { key: '/accounts/customers', icon: <ContactsOutlined />, label: 'Customers (CRM)' },
         { key: '/accounts/invoices', icon: <AccountBookOutlined />, label: 'Invoices' }
       ];
 
@@ -83,6 +87,7 @@ const getRoleMenuConfig = (role) => {
     case 'projectmanager':
       return [
         { key: '/projectmanager', icon: <DashboardOutlined />, label: 'Dashboard' },
+        { key: '/projectmanager/customers', icon: <ContactsOutlined />, label: 'Customers (CRM)' },
         { key: '/projectmanager/workorders', icon: <ProfileOutlined />, label: 'Work Orders' }
       ];
 
@@ -196,32 +201,35 @@ const RoleLayout = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                background: 'linear-gradient(135deg, #c9940a 0%, #a17304 100%)',
-                borderRadius: 6,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-                fontWeight: 800,
-                fontSize: 16,
-                letterSpacing: '-0.02em',
-                boxShadow: '0 2px 6px rgba(201, 148, 10, 0.25)'
-              }}
-            >
-              I
-            </div>
-            {!collapsed && (
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#ffffff', letterSpacing: '0.06em', lineHeight: 1.15 }}>
-                  I ROOFING
-                </div>
-                <div style={{ fontSize: 9.5, color: '#c9940a', letterSpacing: '0.08em', fontWeight: 600 }}>
-                  ENTERPRISE v2
-                </div>
+            {!collapsed ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <img
+                  src="/logos/iroofing_wordmark_white_small.png"
+                  alt="iRoofing"
+                  style={{ height: 26, objectFit: 'contain' }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </div>
+            ) : (
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  background: 'linear-gradient(135deg, #c9940a 0%, #a17304 100%)',
+                  borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: 16,
+                  letterSpacing: '-0.02em',
+                  boxShadow: '0 2px 6px rgba(201, 148, 10, 0.25)'
+                }}
+              >
+                I
               </div>
             )}
           </div>

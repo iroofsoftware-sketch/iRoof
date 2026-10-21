@@ -21,6 +21,7 @@ import {
 import dayjs from 'dayjs';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import AttachmentManager from '../../components/common/AttachmentManager';
 
 const { Option } = Select;
 
@@ -69,6 +70,16 @@ const WorkOrderDetailPage = () => {
       fetchDetail();
     } catch (e) {
       message.error('Failed to update status');
+    }
+  };
+
+  const handleAttachmentsChange = async (newAttachments) => {
+    try {
+      await api.patch(`/workorders/${id}`, { attachments: newAttachments });
+      setWorkOrder((prev) => ({ ...prev, attachments: newAttachments }));
+      message.success('Project attachments updated');
+    } catch (e) {
+      message.error('Failed to update attachments');
     }
   };
 
@@ -310,6 +321,15 @@ const WorkOrderDetailPage = () => {
           >
             {workOrder.notes || 'No project notes entered.'}
           </div>
+        </div>
+
+        {/* ── ATTACHMENTS & BLUEPRINTS ── */}
+        <div style={{ marginTop: 24 }}>
+          <AttachmentManager
+            title="CAD Drawings, Blueprints & Inspection Certificates"
+            attachments={workOrder.attachments || []}
+            onChange={handleAttachmentsChange}
+          />
         </div>
       </div>
 

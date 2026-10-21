@@ -31,6 +31,8 @@ import WorkshopJobsPage from './pages/workshop/WorkshopJobsPage';
 import SiteVisitorDashboard from './pages/sitevisitor/SiteVisitorDashboard';
 import SiteVisitsPage from './pages/sitevisitor/SiteVisitsPage';
 import DesignTasksPage from './pages/design/DesignTasksPage';
+import CustomersPage from './pages/customers/CustomersPage';
+import CustomerQuotationView from './pages/sales/CustomerQuotationView';
 
 import { useAuthStore } from './store/authStore';
 
@@ -137,6 +139,7 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/customers" element={<CustomersPage />} />
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/rate-masters" element={<RateMastersPage defaultTab="rates" />} />
               <Route path="/admin/section-masters" element={<RateMastersPage defaultTab="sections" />} />
@@ -150,16 +153,19 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['sales', 'admin']} />}>
               <Route path="/sales" element={<SalesDashboard />} />
               <Route path="/sales/dashboard" element={<SalesDashboard />} />
+              <Route path="/sales/customers" element={<CustomersPage />} />
               <Route path="/sales/enquiries" element={<EnquiriesPage />} />
               <Route path="/sales/estimates" element={<SavedEstimatesPage />} />
               <Route path="/sales/estimates/new" element={<EstimationPage />} />
               <Route path="/sales/estimates/:id" element={<EstimationPage />} />
+              <Route path="/sales/estimates/:id/quotation" element={<CustomerQuotationView />} />
             </Route>
 
             {/* Accounts Routes */}
             <Route element={<ProtectedRoute allowedRoles={['accounts', 'admin']} />}>
               <Route path="/accounts" element={<AccountsDashboard />} />
               <Route path="/accounts/dashboard" element={<AccountsDashboard />} />
+              <Route path="/accounts/customers" element={<CustomersPage />} />
               <Route path="/accounts/invoices" element={<InvoicesPage />} />
             </Route>
 
@@ -174,6 +180,7 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['projectmanager', 'admin']} />}>
               <Route path="/projectmanager" element={<ProjectManagerDashboard />} />
               <Route path="/projectmanager/dashboard" element={<ProjectManagerDashboard />} />
+              <Route path="/projectmanager/customers" element={<CustomersPage />} />
               <Route path="/projectmanager/workorders" element={<WorkOrdersPage />} />
               <Route path="/projectmanager/workorders/:id" element={<WorkOrderDetailPage />} />
               <Route path="/projectmanager/projects" element={<WorkOrdersPage />} />
@@ -212,6 +219,11 @@ function App() {
           {/* Standalone Printable Purchase Order View (clean — no sidebar, no nav) */}
           <Route element={<ProtectedRoute allowedRoles={['purchase', 'admin']} />}>
             <Route path="/purchase/orders/:id/print" element={<PurchaseOrderPrintView />} />
+          </Route>
+
+          {/* Standalone Printable Commercial Estimate Proposal */}
+          <Route element={<ProtectedRoute allowedRoles={['sales', 'admin']} />}>
+            <Route path="/sales/estimates/:id/print" element={<CustomerQuotationView />} />
           </Route>
 
           {/* Catch-all */}

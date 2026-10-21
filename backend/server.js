@@ -39,6 +39,9 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static uploads (blueprints, site photos, documents)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -53,6 +56,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/estimates', estimateRoutes);
+app.use('/api/customers', require('./src/routes/customerRoutes'));
+app.use('/api/upload', require('./src/routes/uploadRoutes'));
 app.use('/api/workorders', require('./src/routes/workOrderRoutes'));
 app.use('/api/design-tasks', require('./src/routes/designTaskRoutes'));
 app.use('/api/purchase-requests', require('./src/routes/purchaseRequestRoutes'));

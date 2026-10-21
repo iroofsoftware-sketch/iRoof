@@ -115,6 +115,65 @@ const seedDatabase = async () => {
       console.log(`  ✓ Inserted ${DEFAULT_SECTIONS.length} default sections.`);
     }
 
+    // Seed Customers if empty
+    const Customer = require('./models/Customer');
+    const customerCount = await Customer.countDocuments();
+    if (customerCount === 0) {
+      console.log('\nSeeding default CRM Customers...');
+      const adminUser = await User.findOne({ role: 'admin' });
+      const DEFAULT_CUSTOMERS = [
+        {
+          name: 'Rajesh Sharma',
+          companyName: 'Apex Logistics & Warehousing',
+          phone: '9840012345',
+          email: 'rajesh@apexlogistics.in',
+          address: 'Plot 45, SIPCOT Industrial Park',
+          city: 'Chennai',
+          state: 'Tamil Nadu',
+          pincode: '600058',
+          gstin: '33AABCA1234F1Z5',
+          category: 'Industrial',
+          status: 'Active',
+          paymentTerms: '50% Adv, 40% Delivery, 10% Handover',
+          notes: 'Requires 24m clear span arch roof without columns',
+          createdBy: adminUser?._id
+        },
+        {
+          name: 'K. S. Narayanan',
+          companyName: 'Sri Balaji Rice Mills',
+          phone: '9444056789',
+          email: 'balajimills@gmail.com',
+          address: 'Old Trunk Road',
+          city: 'Tiruvallur',
+          state: 'Tamil Nadu',
+          pincode: '602001',
+          gstin: '33AACCS9876K1ZQ',
+          category: 'Industrial',
+          status: 'Active',
+          paymentTerms: '30 days',
+          notes: 'Paddy storage facility, requires waterproof seaming',
+          createdBy: adminUser?._id
+        },
+        {
+          name: 'Arun Sundaram',
+          companyName: 'Greenfield Sports Complex',
+          phone: '9789012345',
+          email: 'arun@greenfieldsports.com',
+          address: 'Survey No 112, ECR Road',
+          city: 'Kanchipuram',
+          state: 'Tamil Nadu',
+          pincode: '603104',
+          category: 'Commercial',
+          status: 'Lead',
+          paymentTerms: '50% Adv, 50% Handover',
+          notes: 'Indoor badminton and multi-sport auditorium',
+          createdBy: adminUser?._id
+        }
+      ];
+      await Customer.insertMany(DEFAULT_CUSTOMERS);
+      console.log(`  ✓ Inserted ${DEFAULT_CUSTOMERS.length} default CRM client profiles.`);
+    }
+
     console.log('\n═══════════════════════════════════════════════════════════════════');
     console.log('🎉 iRoof v2 Database Initialized Successfully!');
     console.log('═══════════════════════════════════════════════════════════════════');

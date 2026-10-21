@@ -55,6 +55,15 @@ const enquirySchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    attachments: [
+      {
+        name: String,
+        url: String,
+        fileType: String,
+        size: Number,
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

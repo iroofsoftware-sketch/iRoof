@@ -13,7 +13,8 @@ import {
   ReloadOutlined,
   DeleteOutlined,
   SearchOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  FilePdfOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
@@ -145,7 +146,15 @@ const SavedEstimatesPage = () => {
       key: 'actions',
       align: 'right',
       render: (_, record) => (
-        <Space size={4}>
+        <Space size={6}>
+          <Button
+            size="small"
+            icon={<FilePdfOutlined />}
+            onClick={() => navigate(`/sales/estimates/${record._id}/quotation`)}
+            style={{ color: '#0b2e59', borderColor: '#cbd5e1' }}
+          >
+            Proposal
+          </Button>
           <Button
             type="primary"
             size="small"

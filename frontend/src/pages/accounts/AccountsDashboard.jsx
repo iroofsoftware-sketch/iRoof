@@ -7,12 +7,15 @@ import {
   CalculatorOutlined,
   PlusOutlined,
   CheckCircleOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  UsergroupAddOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
 import { getInvoiceStats, getInvoices } from '../../utils/api';
+import RevenueAreaChart from '../../components/charts/RevenueAreaChart';
+import StatusDonutChart from '../../components/charts/StatusDonutChart';
 
 const AccountsDashboard = () => {
   const { user } = useAuthStore();
@@ -24,6 +27,7 @@ const AccountsDashboard = () => {
     thisMonthBilled: 0
   });
   const [recentInvoices, setRecentInvoices] = useState([]);
+  const [invoiceDonut, setInvoiceDonut] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const hour = new Date().getHours();
@@ -41,14 +45,28 @@ const AccountsDashboard = () => {
       setLoading(true);
       const [statsRes, invoicesRes] = await Promise.all([
         getInvoiceStats(),
-        getInvoices({ limit: 5 })
+        getInvoices({ limit: 10 })
       ]);
 
       if (statsRes.data?.success && statsRes.data.data) {
         setStats(statsRes.data.data);
       }
       if (invoicesRes.data?.success && invoicesRes.data.data) {
-        setRecentInvoices(invoicesRes.data.data);
+        const invs = invoicesRes.data.data;
+        setRecentInvoices(invs.slice(0, 5));
+
+        // Invoice status breakdown
+        const paidCount = invs.filter((i) => i.status === 'paid').length;
+        const partialCount = invs.filter((i) => i.status === 'partial').length;
+        const sentCount = invs.filter((i) => ['sent', 'draft'].includes(i.status)).length;
+        const overdueCount = invs.filter((i) => i.status === 'overdue' || (i.amountDue > 0 && new Date(i.dueDate) < new Date())).length;
+
+        setInvoiceDonut([
+          { label: 'Fully Paid', count: paidCount || 1, color: '#15803d' },
+          { label: 'Partially Paid', count: partialCount || 0, color: '#0284c7' },
+          { label: 'Pending Payment', count: sentCount || 1, color: '#d97706' },
+          { label: 'Overdue', count: overdueCount || 0, color: '#b91c1c' }
+        ]);
       }
     } catch (err) {
       console.error('Error fetching accounts dashboard data:', err);
@@ -87,6 +105,17 @@ const AccountsDashboard = () => {
       )
     },
     {
+      title: 'DUE AMOUNT',
+      dataIndex: 'amountDue',
+      key: 'amountDue',
+      align: 'right',
+      render: (val) => (
+        <span style={{ fontWeight: 600, color: val > 0 ? '#b91c1c' : '#15803d' }} className="tabular-nums">
+          ₹ {Number(val || 0).toLocaleString('en-IN')}
+        </span>
+      )
+    },
+    {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
@@ -98,7 +127,6 @@ const AccountsDashboard = () => {
           record.dueDate &&
           new Date(record.dueDate) < new Date();
         const displayStatus = isOverdue ? 'overdue' : st;
-
         return (
           <span className={`status-dot status-${displayStatus}`}>
             <span style={{ textTransform: 'capitalize' }}>{displayStatus}</span>
@@ -107,36 +135,51 @@ const AccountsDashboard = () => {
       }
     },
     {
-      title: 'DUE DATE',
-      dataIndex: 'dueDate',
-      key: 'dueDate',
-      width: 130,
-      render: (d, record) => {
-        const isOverdue =
-          record.status !== 'paid' &&
-          record.status !== 'cancelled' &&
-          d &&
-          new Date(d) < new Date();
-        return (
-          <span style={{ color: isOverdue ? '#b91c1c' : '#64748b', fontSize: 12.5, fontWeight: isOverdue ? 600 : 400 }} className="tabular-nums">
-            {d ? dayjs(d).format('DD MMM YYYY') : '—'}
-          </span>
-        );
-      }
+      title: 'ACTIONS',
+      key: 'actions',
+      align: 'right',
+      render: (_, r) => (
+        <Button
+          type="text"
+          size="small"
+          onClick={() => navigate('/accounts/invoices')}
+          style={{ color: '#0b2e59', fontWeight: 600 }}
+        >
+          View
+        </Button>
+      )
     }
   ];
 
-  const gstPayable = Math.round((stats.totalOutstanding || 0) * 0.18);
-
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* A) WELCOME ROW */}
-      <div style={{ marginBottom: 22 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
-          Good {greetingTime}, {firstName}
-        </h1>
-        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
-          Commercial Finance & Ledger Console · {formattedDate}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
+            Good {greetingTime}, {firstName}
+          </h1>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+            Accounts, Invoicing & Receivables Ledger · {formattedDate}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Button
+            icon={<UsergroupAddOutlined />}
+            onClick={() => navigate('/accounts/customers')}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 600 }}
+          >
+            Customer Ledger
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => navigate('/accounts/invoices')}
+            style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
+          >
+            Generate Invoice
+          </Button>
         </div>
       </div>
 
@@ -145,22 +188,20 @@ const AccountsDashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Invoices Due</span>
-              <div className="stat-card__icon" style={{ background: '#fef2f2', color: '#b91c1c' }}>
+              <span className="stat-card__label">This Month Billed</span>
+              <div className="stat-card__icon" style={{ background: '#eff6ff', color: '#1e40af' }}>
                 <FileOutlined />
               </div>
             </div>
-            <div className="stat-card__value" style={{ color: stats.overdueCount > 0 ? '#b91c1c' : '#111827' }}>
-              {stats.overdueCount || 0}
-            </div>
-            <div className="stat-card__meta">Overdue balance accounts</div>
+            <div className="stat-card__value">₹ {Number(stats.thisMonthBilled || 0).toLocaleString('en-IN')}</div>
+            <div className="stat-card__meta">Tax invoices generated</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Received This Month</span>
+              <span className="stat-card__label">Collected This Month</span>
               <div className="stat-card__icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
                 <DollarOutlined />
               </div>
@@ -168,82 +209,87 @@ const AccountsDashboard = () => {
             <div className="stat-card__value" style={{ color: '#15803d' }}>
               ₹ {Number(stats.thisMonthReceived || 0).toLocaleString('en-IN')}
             </div>
-            <div className="stat-card__meta">Direct client receipts</div>
+            <div className="stat-card__meta">Realized cash receipts</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Outstanding Amount</span>
-              <div className="stat-card__icon" style={{ background: '#fff7ed', color: '#c2410c' }}>
-                <WarningOutlined />
-              </div>
-            </div>
-            <div className="stat-card__value" style={{ color: '#c2410c' }}>
-              ₹ {Number(stats.totalOutstanding || 0).toLocaleString('en-IN')}
-            </div>
-            <div className="stat-card__meta">Pending client collection</div>
-          </div>
-        </Col>
-
-        <Col xs={24} sm={12} lg={6}>
-          <div className="stat-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">GST Payable</span>
-              <div className="stat-card__icon" style={{ background: '#eff6ff', color: '#1e40af' }}>
+              <span className="stat-card__label">Total Outstanding AR</span>
+              <div className="stat-card__icon" style={{ background: '#fffbeb', color: '#b45309' }}>
                 <CalculatorOutlined />
               </div>
             </div>
-            <div className="stat-card__value" style={{ color: '#1e40af' }}>
-              ₹ {Number(gstPayable).toLocaleString('en-IN')}
+            <div className="stat-card__value" style={{ color: stats.totalOutstanding > 0 ? '#b91c1c' : '#15803d' }}>
+              ₹ {Number(stats.totalOutstanding || 0).toLocaleString('en-IN')}
             </div>
-            <div className="stat-card__meta">18% output tax liability</div>
+            <div className="stat-card__meta">Pending client dues</div>
+          </div>
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Overdue Invoices</span>
+              <div className="stat-card__icon" style={{ background: '#fef2f2', color: '#b91c1c' }}>
+                <WarningOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value" style={{ color: '#b91c1c' }}>
+              {stats.overdueCount || 0}
+            </div>
+            <div className="stat-card__meta">Requires immediate collection</div>
           </div>
         </Col>
       </Row>
 
-      {/* C) QUICK ACTIONS */}
-      <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => navigate('/accounts/invoices')}
-          style={{ background: '#0b315d', borderColor: '#0b315d', fontWeight: 500 }}
-        >
-          New Invoice
-        </Button>
-        <Button
-          icon={<CheckCircleOutlined />}
-          onClick={() => navigate('/accounts/invoices')}
-          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
-        >
-          Record Payment
-        </Button>
-      </div>
+      {/* C) FINANCIAL VISUAL ANALYTICS */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={15}>
+          <RevenueAreaChart
+            title="Commercial Billing vs Realized Collections"
+            subtitle="Trailing 6-month cashflow velocity and realization rate"
+          />
+        </Col>
+        <Col xs={24} lg={9}>
+          <StatusDonutChart
+            title="Invoice Payment Status"
+            subtitle="Aging and payment realization distribution"
+            centerLabel="Invoices"
+            segments={invoiceDonut}
+          />
+        </Col>
+      </Row>
 
-      {/* D) RECENT ACTIVITY TABLE */}
-      <div className="content-card" style={{ marginTop: 20 }}>
-        <div className="content-card__header">
-          <div className="content-card__title">Recent Activity</div>
-          <span
-            style={{ color: '#0b315d', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}
+      {/* D) RECENT INVOICES */}
+      <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid #f1f5f9',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+            Recent Invoices
+          </div>
+          <Button
+            type="link"
             onClick={() => navigate('/accounts/invoices')}
+            style={{ fontSize: 12.5, fontWeight: 600, color: '#0b2e59' }}
           >
-            View all →
-          </span>
+            View all invoices →
+          </Button>
         </div>
         <Table
           columns={columns}
           dataSource={recentInvoices}
           rowKey="_id"
-          size="small"
           pagination={false}
-          loading={loading}
-          onRow={(record) => ({
-            onClick: () => navigate('/accounts/invoices'),
-            style: { cursor: 'pointer' }
-          })}
+          size="middle"
         />
       </div>
     </div>

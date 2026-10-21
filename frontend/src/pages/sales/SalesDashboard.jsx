@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Table, Button, Empty } from 'antd';
+import { Row, Col, Table, Button, Empty, Card } from 'antd';
 import {
   FileTextOutlined,
   CalculatorOutlined,
   ClockCircleOutlined,
   TrophyOutlined,
-  PlusOutlined
+  PlusOutlined,
+  UsergroupAddOutlined,
+  AppstoreOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
+import ConversionFunnelChart from '../../components/charts/ConversionFunnelChart';
+import StatusDonutChart from '../../components/charts/StatusDonutChart';
 
 const SalesDashboard = () => {
   const { user } = useAuthStore();
@@ -18,8 +22,11 @@ const SalesDashboard = () => {
   const [stats, setStats] = useState({
     enquiriesCount: 0,
     estimatesCount: 0,
-    pendingFollowup: 0
+    pendingFollowup: 0,
+    wonCount: 0
   });
+  const [funnelData, setFunnelData] = useState([]);
+  const [stageDonut, setStageDonut] = useState([]);
   const [recentEnquiries, setRecentEnquiries] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -37,21 +44,48 @@ const SalesDashboard = () => {
     const fetchSalesData = async () => {
       setLoading(true);
       try {
-        const [enqRes, estRes] = await Promise.all([
+        const [enqRes, estRes, woRes] = await Promise.all([
           api.get('/enquiries').catch(() => ({ data: { enquiries: [] } })),
-          api.get('/estimates').catch(() => ({ data: { estimates: [] } }))
+          api.get('/estimates').catch(() => ({ data: { estimates: [] } })),
+          api.get('/workorders').catch(() => ({ data: { data: [] } }))
         ]);
 
         const enquiries = enqRes.data?.enquiries || [];
         const estimates = estRes.data?.estimates || [];
+        const workOrders = woRes.data?.data || [];
 
         const pending = enquiries.filter((e) => ['new', 'visited'].includes(e.status)).length;
+        const visited = enquiries.filter((e) => ['visited', 'estimated', 'approved', 'completed'].includes(e.status)).length;
+        const won = workOrders.length;
+        const completed = workOrders.filter((w) => w.status === 'completed').length;
 
         setStats({
           enquiriesCount: enquiries.length,
           estimatesCount: estimates.length,
-          pendingFollowup: pending
+          pendingFollowup: pending,
+          wonCount: won
         });
+
+        setFunnelData([
+          { label: 'New Enquiries', count: enquiries.length || 1, color: '#0b2e59' },
+          { label: 'Site Inspected', count: visited || 1, color: '#1d4ed8' },
+          { label: 'Commercial Estimates', count: estimates.length || 1, color: '#0284c7' },
+          { label: 'Work Orders Won', count: won || 1, color: '#c9940a' },
+          { label: 'Completed / Handover', count: completed || 1, color: '#15803d' }
+        ]);
+
+        // Enquiry status distribution
+        const newCount = enquiries.filter((e) => e.status === 'new').length;
+        const visitedCount = enquiries.filter((e) => e.status === 'visited').length;
+        const estCount = enquiries.filter((e) => e.status === 'estimated').length;
+        const appCount = enquiries.filter((e) => ['approved', 'completed'].includes(e.status)).length;
+
+        setStageDonut([
+          { label: 'New Leads', count: newCount || 1, color: '#0b2e59' },
+          { label: 'Site Visited', count: visitedCount || 1, color: '#1d4ed8' },
+          { label: 'Quoted', count: estCount || 1, color: '#0284c7' },
+          { label: 'Approved / Won', count: appCount || 1, color: '#15803d' }
+        ]);
 
         const recent = enquiries.slice(0, 5).map((e) => ({
           key: e._id,
@@ -98,9 +132,9 @@ const SalesDashboard = () => {
       dataIndex: 'status',
       key: 'status',
       width: 130,
-      render: (st) => (
-        <span className={`status-dot status-${st}`}>
-          <span style={{ textTransform: 'capitalize' }}>{st}</span>
+      render: (status) => (
+        <span className={`status-dot status-${status}`}>
+          <span style={{ textTransform: 'capitalize' }}>{status}</span>
         </span>
       )
     },
@@ -114,14 +148,41 @@ const SalesDashboard = () => {
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* A) WELCOME ROW */}
-      <div style={{ marginBottom: 22 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
-          Good {greetingTime}, {firstName}
-        </h1>
-        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
-          Commercial Sales & Estimation Console · {formattedDate}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
+            Good {greetingTime}, {firstName}
+          </h1>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+            Sales & Commercial Roofing Pipeline · {formattedDate}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Button
+            icon={<UsergroupAddOutlined />}
+            onClick={() => navigate('/sales/customers')}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 600 }}
+          >
+            Customers CRM
+          </Button>
+          <Button
+            icon={<AppstoreOutlined />}
+            onClick={() => navigate('/sales/enquiries')}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 600 }}
+          >
+            Pipeline Kanban
+          </Button>
+          <Button
+            type="primary"
+            icon={<CalculatorOutlined />}
+            onClick={() => navigate('/sales/estimates/new')}
+            style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
+          >
+            New Estimate
+          </Button>
         </div>
       </div>
 
@@ -130,13 +191,28 @@ const SalesDashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">My Enquiries</span>
-              <div className="stat-card__icon" style={{ background: '#fff7ed', color: '#c2410c' }}>
+              <span className="stat-card__label">Active Enquiries</span>
+              <div className="stat-card__icon" style={{ background: '#eff6ff', color: '#1e40af' }}>
                 <FileTextOutlined />
               </div>
             </div>
             <div className="stat-card__value">{stats.enquiriesCount}</div>
-            <div className="stat-card__meta">Customer requests</div>
+            <div className="stat-card__meta">Total client inquiries</div>
+          </div>
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Pending Follow-up</span>
+              <div className="stat-card__icon" style={{ background: '#fff7ed', color: '#c2410c' }}>
+                <ClockCircleOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value" style={{ color: stats.pendingFollowup > 0 ? '#c2410c' : '#1e293b' }}>
+              {stats.pendingFollowup}
+            </div>
+            <div className="stat-card__meta">Awaiting site visit / estimation</div>
           </div>
         </Col>
 
@@ -149,82 +225,83 @@ const SalesDashboard = () => {
               </div>
             </div>
             <div className="stat-card__value">{stats.estimatesCount}</div>
-            <div className="stat-card__meta">Engineering valuations</div>
+            <div className="stat-card__meta">Commercial quotations</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Pending Follow-up</span>
-              <div className="stat-card__icon" style={{ background: '#fff7ed', color: '#c2410c' }}>
-                <ClockCircleOutlined />
-              </div>
-            </div>
-            <div className="stat-card__value">{stats.pendingFollowup}</div>
-            <div className="stat-card__meta">Awaiting site visit or estimate</div>
-          </div>
-        </Col>
-
-        <Col xs={24} sm={12} lg={6}>
-          <div className="stat-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Win Rate</span>
-              <div className="stat-card__icon" style={{ background: '#eff6ff', color: '#1e40af' }}>
+              <span className="stat-card__label">Projects Won</span>
+              <div className="stat-card__icon" style={{ background: '#ecfdf5', color: '#047857' }}>
                 <TrophyOutlined />
               </div>
             </div>
-            <div className="stat-card__value" style={{ fontSize: 24 }}>—</div>
-            <div className="stat-card__meta">Phase 2 analytics</div>
+            <div className="stat-card__value" style={{ color: '#047857' }}>
+              {stats.wonCount}
+            </div>
+            <div className="stat-card__meta">Converted to work orders</div>
           </div>
         </Col>
       </Row>
 
-      {/* C) QUICK ACTIONS */}
-      <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Button
-          icon={<PlusOutlined />}
-          onClick={() => navigate('/sales/enquiries')}
-          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
-        >
-          New Enquiry
-        </Button>
-        <Button
-          icon={<CalculatorOutlined />}
-          onClick={() => navigate('/sales/estimates/new')}
-          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
-        >
-          New Estimate
-        </Button>
-        <Button
-          icon={<FileTextOutlined />}
-          onClick={() => navigate('/sales/enquiries')}
-          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
-        >
-          View Enquiries
-        </Button>
-      </div>
+      {/* C) ANALYTICS ROW */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={14}>
+          <ConversionFunnelChart
+            title="Sales Conversion Funnel"
+            subtitle="Drop-off and stage velocity from enquiry to contract award"
+            stages={funnelData}
+          />
+        </Col>
+        <Col xs={24} lg={10}>
+          <StatusDonutChart
+            title="Lead Stage Distribution"
+            subtitle="Current status of all client inquiries"
+            centerLabel="Total Leads"
+            segments={stageDonut}
+          />
+        </Col>
+      </Row>
 
-      {/* D) RECENT ACTIVITY TABLE */}
-      <div className="content-card" style={{ marginTop: 20 }}>
-        <div className="content-card__header">
-          <div className="content-card__title">Recent Enquiries</div>
+      {/* D) RECENT LEADS TABLE */}
+      <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid #f1f5f9',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+            Recent Inquiries
+          </div>
           <Button
             type="link"
             onClick={() => navigate('/sales/enquiries')}
-            style={{ color: '#0b315d', padding: 0, fontSize: 13 }}
+            style={{ fontSize: 12.5, fontWeight: 600, color: '#0b2e59' }}
           >
-            View all →
+            View all inquiries →
           </Button>
         </div>
-        <Table
-          columns={columns}
-          dataSource={recentEnquiries}
-          size="small"
-          pagination={false}
-          loading={loading}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No recent enquiries" /> }}
-        />
+        {recentEnquiries.length === 0 ? (
+          <div style={{ padding: '40px 0' }}>
+            <Empty description="No recent enquiries logged" />
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={recentEnquiries}
+            pagination={false}
+            size="middle"
+            onRow={(record) => ({
+              onClick: () => navigate('/sales/enquiries'),
+              style: { cursor: 'pointer' }
+            })}
+          />
+        )}
       </div>
     </div>
   );

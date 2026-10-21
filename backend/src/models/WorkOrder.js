@@ -25,6 +25,15 @@ const workOrderSchema = new mongoose.Schema(
     },
     targetDate: { type: Date },
     notes: { type: String },
+    attachments: [
+      {
+        name: String,
+        url: String,
+        fileType: String,
+        size: Number,
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
     createdBy: { type: ObjectId, ref: 'User', required: true },
     assignedPM: { type: ObjectId, ref: 'User' } // project manager
   },
