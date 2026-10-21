@@ -5,8 +5,9 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleLayout from './layouts/RoleLayout';
 
-// Dashboards
+// Dashboards & Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
+import UsersPage from './pages/admin/UsersPage';
 import SalesDashboard from './pages/sales/SalesDashboard';
 import AccountsDashboard from './pages/accounts/AccountsDashboard';
 import DesignDashboard from './pages/design/DesignDashboard';
@@ -45,8 +46,7 @@ function App() {
           {/* Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            {/* Step 4 & 5 pages will mount here */}
-            <Route path="/admin/users" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/rates" element={<AdminDashboard />} />
           </Route>
 
