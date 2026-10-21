@@ -23,6 +23,9 @@ import WorkOrdersPage from './pages/projectmanager/WorkOrdersPage';
 import WorkOrderDetailPage from './pages/projectmanager/WorkOrderDetailPage';
 import PurchaseDashboard from './pages/purchase/PurchaseDashboard';
 import PurchaseRequestsPage from './pages/purchase/PurchaseRequestsPage';
+import PurchaseOrdersPage from './pages/purchase/PurchaseOrdersPage';
+import PurchaseOrderPrintView from './pages/purchase/PurchaseOrderPrintView';
+import SuppliersPage from './pages/admin/SuppliersPage';
 import WorkshopDashboard from './pages/workshop/WorkshopDashboard';
 import WorkshopJobsPage from './pages/workshop/WorkshopJobsPage';
 import SiteVisitorDashboard from './pages/sitevisitor/SiteVisitorDashboard';
@@ -139,6 +142,7 @@ function App() {
               <Route path="/admin/rates" element={<RateMastersPage />} />
               <Route path="/admin/enquiries" element={<EnquiriesPage />} />
               <Route path="/admin/estimates" element={<SavedEstimatesPage />} />
+              <Route path="/admin/suppliers" element={<SuppliersPage />} />
             </Route>
 
             {/* Sales Routes */}
@@ -179,8 +183,8 @@ function App() {
               <Route path="/purchase" element={<PurchaseDashboard />} />
               <Route path="/purchase/dashboard" element={<PurchaseDashboard />} />
               <Route path="/purchase/requests" element={<PurchaseRequestsPage />} />
-              <Route path="/purchase/orders" element={<PurchaseRequestsPage />} />
-              <Route path="/purchase/suppliers" element={<PurchaseDashboard />} />
+              <Route path="/purchase/orders" element={<PurchaseOrdersPage />} />
+              <Route path="/purchase/suppliers" element={<SuppliersPage />} />
             </Route>
 
             {/* Workshop Routes */}
@@ -202,6 +206,11 @@ function App() {
           {/* Standalone Printable Invoice View (clean — no sidebar, no nav) */}
           <Route element={<ProtectedRoute allowedRoles={['accounts', 'admin']} />}>
             <Route path="/accounts/invoices/:id/print" element={<InvoicePrintView />} />
+          </Route>
+
+          {/* Standalone Printable Purchase Order View (clean — no sidebar, no nav) */}
+          <Route element={<ProtectedRoute allowedRoles={['purchase', 'admin']} />}>
+            <Route path="/purchase/orders/:id/print" element={<PurchaseOrderPrintView />} />
           </Route>
 
           {/* Catch-all */}

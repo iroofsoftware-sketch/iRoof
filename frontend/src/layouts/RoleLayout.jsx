@@ -56,6 +56,7 @@ const getRoleMenuConfig = (role) => {
         { key: '/admin/users', icon: <TeamOutlined />, label: 'Users' },
         { key: '/admin/rate-masters', icon: <ControlOutlined />, label: 'Rate Masters' },
         { key: '/admin/section-masters', icon: <AppstoreOutlined />, label: 'Section Masters' },
+        { key: '/admin/suppliers', icon: <ShopOutlined />, label: 'Suppliers' },
         { key: '/admin/enquiries', icon: <FileSearchOutlined />, label: 'All Enquiries' },
         { key: '/admin/estimates', icon: <CalculatorOutlined />, label: 'All Estimates' }
       ];
@@ -89,8 +90,9 @@ const getRoleMenuConfig = (role) => {
     case 'purchase':
       return [
         { key: '/purchase', icon: <DashboardOutlined />, label: 'Dashboard' },
-        { key: '/purchase/requests', icon: <ShoppingCartOutlined />, label: 'Requests' },
-        { key: '/purchase/suppliers', icon: <ShopOutlined />, label: 'Suppliers' }
+        { key: '/purchase/requests', icon: <FileTextOutlined />, label: 'Purchase Requests' },
+        { key: '/purchase/orders', icon: <ShoppingCartOutlined />, label: 'Purchase Orders' },
+        { key: '/admin/suppliers', icon: <ShopOutlined />, label: 'Suppliers' }
       ];
 
     case 'workshop':

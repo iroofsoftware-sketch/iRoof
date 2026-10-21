@@ -46,3 +46,18 @@ export const deleteInvoice = (id) => api.delete(`/invoices/${id}`);
 export const recordPayment = (data) => api.post('/payments', data);
 export const getPaymentsByInvoice = (invoiceId) => api.get(`/payments?invoiceId=${invoiceId}`);
 export const deletePayment = (id) => api.delete(`/payments/${id}`);
+
+// Suppliers
+export const getSuppliers = (params) => api.get('/suppliers', { params });
+export const getSupplierById = (id) => api.get(`/suppliers/${id}`);
+export const createSupplier = (data) => api.post('/suppliers', data);
+export const updateSupplier = (id, data) => api.patch(`/suppliers/${id}`, data);
+export const deleteSupplier = (id) => api.delete(`/suppliers/${id}`);
+
+// Purchase Orders
+export const getPurchaseOrders = (params) => api.get('/purchase-orders', { params });
+export const getPurchaseOrderStats = () => api.get('/purchase-orders/stats');
+export const getPurchaseOrderById = (id) => api.get(`/purchase-orders/${id}`);
+export const createPurchaseOrder = (data) => api.post('/purchase-orders', data);
+export const updatePurchaseOrder = (id, data) => api.patch(`/purchase-orders/${id}`, data);
+

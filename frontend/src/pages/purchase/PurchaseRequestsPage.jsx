@@ -14,7 +14,8 @@ import {
 import {
   EditOutlined,
   SearchOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
@@ -175,14 +176,27 @@ const PurchaseRequestsPage = () => {
       key: 'actions',
       align: 'right',
       render: (_, r) => (
-        <Button
-          type="text"
-          size="small"
-          icon={<EditOutlined style={{ color: '#0b315d' }} />}
-          onClick={() => handleOpenEditModal(r)}
-        >
-          Edit
-        </Button>
+        <Space size={4}>
+          {r.status === 'approved' && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<FileTextOutlined />}
+              style={{ background: '#0b315d', borderColor: '#0b315d', fontSize: 12 }}
+              onClick={() => navigate(`/purchase/orders?prId=${r._id}`)}
+            >
+              Create PO
+            </Button>
+          )}
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined style={{ color: '#0b315d' }} />}
+            onClick={() => handleOpenEditModal(r)}
+          >
+            Edit
+          </Button>
+        </Space>
       )
     }
   ];
