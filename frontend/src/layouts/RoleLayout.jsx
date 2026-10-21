@@ -26,7 +26,6 @@ import {
   ToolOutlined,
   EnvironmentOutlined,
   LogoutOutlined,
-  SearchOutlined,
   BellOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -383,6 +382,7 @@ const RoleLayout = () => {
         <Header
           style={{
             height: 58,
+            lineHeight: 'normal',
             background: '#ffffff',
             borderBottom: '1px solid #e2e8f0',
             padding: '0 28px',
@@ -427,46 +427,7 @@ const RoleLayout = () => {
           </div>
 
           {/* RIGHT: Actions & User */}
-          <Space size={16} align="center">
-            {/* Quick Search Chip */}
-            {!isMobile && (
-              <div
-                style={{
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 6,
-                  padding: '5px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontSize: 12,
-                  color: '#64748b'
-                }}
-              >
-                <SearchOutlined style={{ fontSize: 13, color: '#94a3b8' }} />
-                <span>Search system...</span>
-              </div>
-            )}
-
-            {/* Operational Status Capsule */}
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                padding: '3px 9px',
-                borderRadius: 9999,
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#15803d'
-              }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
-              <span>Operational</span>
-            </div>
-
+          <Space size={16} align="center" style={{ lineHeight: 1 }}>
             <Button
               type="text"
               icon={<BellOutlined />}
@@ -474,7 +435,7 @@ const RoleLayout = () => {
               aria-label="Notifications"
             />
 
-            <div style={{ width: 1, height: 22, background: '#e2e8f0' }} />
+            <div style={{ width: 1, height: 20, background: '#e2e8f0' }} />
 
             <Dropdown menu={{ items: userDropdownItems }} placement="bottomRight" arrow>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
