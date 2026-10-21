@@ -1,35 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Form,
+  Input,
   InputNumber,
   Select,
-  Radio,
+  Switch,
   Button,
-  Card,
-  Row,
-  Col,
-  Statistic,
+  DatePicker,
   Alert,
-  Typography,
-  Space,
   Tag,
-  Divider,
-  Descriptions,
-  message,
+  Space,
   Modal,
-  Table
+  Table,
+  message
 } from 'antd';
 import {
-  CalculatorOutlined,
+  ThunderboltOutlined,
   SaveOutlined,
   PrinterOutlined,
   FolderOpenOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ThunderboltOutlined,
-  CompassOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  RadiusUpleftOutlined,
+  ColumnHeightOutlined,
+  ForkOutlined,
+  MinusOutlined
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { useReactToPrint } from 'react-to-print';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
@@ -40,15 +36,39 @@ import {
   DEFAULT_RATES
 } from '../../utils/engineeringEngine';
 
-const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 
-export const ENGINEERING_MODELS = [
-  { key: 'Normal Cantilever', label: 'MODEL 1: Normal Cantilever' },
-  { key: 'Auditorium', label: 'MODEL 2: Auditorium' },
-  { key: 'PEB Cantilever', label: 'MODEL 3: PEB Cantilever' },
-  { key: 'Type 2 Cantilever', label: 'MODEL 4: Type 2 Cantilever' },
-  { key: 'Simply Supported', label: 'MODEL 5: Simply Supported' }
+const MODEL_CARDS = [
+  {
+    key: 'Normal Cantilever',
+    name: 'Normal Cantilever',
+    desc: 'Standard single cantilever',
+    icon: <ArrowRightOutlined style={{ fontSize: 22 }} />
+  },
+  {
+    key: 'Auditorium',
+    name: 'Auditorium',
+    desc: 'Curved arch profile',
+    icon: <RadiusUpleftOutlined style={{ fontSize: 22 }} />
+  },
+  {
+    key: 'PEB Cantilever',
+    name: 'PEB Cantilever',
+    desc: 'Pre-engineered structural',
+    icon: <ColumnHeightOutlined style={{ fontSize: 22 }} />
+  },
+  {
+    key: 'Type 2 Cantilever',
+    name: 'Type 2 Cantilever',
+    desc: 'Reverse slope cantilever',
+    icon: <ForkOutlined style={{ fontSize: 22 }} />
+  },
+  {
+    key: 'Simply Supported',
+    name: 'Simply Supported',
+    desc: 'Double column arch shed',
+    icon: <MinusOutlined style={{ fontSize: 22 }} />
+  }
 ];
 
 const EstimationPage = () => {
@@ -66,7 +86,12 @@ const EstimationPage = () => {
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [estimateId, setEstimateId] = useState(id || null);
   const [savedStatus, setSavedStatus] = useState('draft');
+  const [lastSavedTime, setLastSavedTime] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // Selected Model State for the 5 interactive cards
+  const [selectedModel, setSelectedModel] = useState('Normal Cantilever');
+  const [withAngle, setWithAngle] = useState(false);
 
   // Calculation State
   const [calcResults, setCalcResults] = useState(null);
@@ -81,11 +106,11 @@ const EstimationPage = () => {
   // Print hook
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `iRoof_Estimate_${estimateId || 'Draft'}`
+    documentTitle: `iRoof_Estimate_${estimateId ? estimateId.slice(-6).toUpperCase() : 'Draft'}`
   });
 
   // ──────────────────────────────────────────
-  // FETCH ENQUIRIES & RATES
+  // FETCH ENQUIRIES & ACTIVE RATES
   // ──────────────────────────────────────────
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -112,7 +137,7 @@ const EstimationPage = () => {
           ratesRes.data.rates.forEach((item) => {
             if (item.category === 'labour') mappedRates.structLabRate = item.rate;
             if (item.category === 'welding') mappedRates.structConRate = item.rate;
-            if (item.category === 'sheeting') mappedRates.sheetRate = item.rate;
+            if (item.category === 'sheeting' || item.category === 'sheet') mappedRates.sheetRate = item.rate;
           });
           setActiveRates(mappedRates);
         }
@@ -125,7 +150,44 @@ const EstimationPage = () => {
   }, [enquiryIdFromQuery, form]);
 
   // ──────────────────────────────────────────
-  // LOAD EXISTING ESTIMATE IF ID IN URL
+  // CALCULATION LOGIC (100% UNCHANGED)
+  // ──────────────────────────────────────────
+  const runCalculation = useCallback(() => {
+    const values = form.getFieldsValue();
+    const { span, length, height, distance } = values;
+
+    if (!selectedModel || !span || !length) {
+      return;
+    }
+
+    const angleMode = withAngle ? 'With Angle' : 'Without Angle';
+
+    const res = autoEngineering(
+      selectedModel,
+      Number(span),
+      Number(length),
+      Number(height || 0),
+      Number(distance || 0),
+      angleMode
+    );
+
+    setCalcResults(res);
+
+    if (res && !res.error) {
+      const calculatedCosts = calculateEstimateCosts(res, activeRates);
+      setCosts(calculatedCosts);
+    } else {
+      setCosts(null);
+    }
+  }, [form, selectedModel, withAngle, activeRates]);
+
+  // Trigger calculation on first render once form has initial values
+  useEffect(() => {
+    runCalculation();
+  }, [runCalculation]);
+
+  // ──────────────────────────────────────────
+  // LOAD EXISTING ESTIMATE BY ID
   // ──────────────────────────────────────────
   const loadEstimateById = useCallback(async (loadId) => {
     try {
@@ -133,13 +195,17 @@ const EstimationPage = () => {
       if (response.data && response.data.estimate) {
         const est = response.data.estimate;
         setEstimateId(est._id);
-        setSavedStatus(est.status || 'draft');
+        setSavedStatus(est.status || 'saved');
+        setLastSavedTime(est.updatedAt ? new Date(est.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Saved');
 
         const inputs = est.inputData || {};
+        const isWithAngle = inputs.angleMode === 'With Angle';
+        setWithAngle(isWithAngle);
+        setSelectedModel(est.model || 'Normal Cantilever');
+
         form.setFieldsValue({
           enquiryId: est.enquiryId?._id || est.enquiryId,
-          model: est.model || 'Normal Cantilever',
-          angleMode: inputs.angleMode || 'Without Angle',
+          estimateDate: dayjs(est.createdAt || undefined),
           span: inputs.span,
           length: inputs.length,
           height: inputs.height,
@@ -166,88 +232,64 @@ const EstimationPage = () => {
     }
   }, [id, loadEstimateById]);
 
-  // ──────────────────────────────────────────
-  // CALCULATION LOGIC
-  // ──────────────────────────────────────────
-  const runCalculation = useCallback(() => {
-    const values = form.getFieldsValue();
-    const { model, span, length, height, distance, angleMode } = values;
-
-    if (!model || !span || !length) {
-      return;
-    }
-
-    const res = autoEngineering(
-      model,
-      Number(span),
-      Number(length),
-      Number(height || 0),
-      Number(distance || 0),
-      angleMode
-    );
-
-    setCalcResults(res);
-
-    if (res && !res.error) {
-      const calculatedCosts = calculateEstimateCosts(res, activeRates);
-      setCosts(calculatedCosts);
-    } else {
-      setCosts(null);
-    }
-  }, [form, activeRates]);
-
+  // Handle Enquiry select change
   const handleEnquiryChange = (enqId) => {
     const found = enquiries.find((e) => e._id === enqId);
     setSelectedEnquiry(found || null);
     if (found && found.roofType) {
-      const matched = ENGINEERING_MODELS.find((m) =>
+      const matched = MODEL_CARDS.find((m) =>
         found.roofType.toLowerCase().includes(m.key.toLowerCase())
       );
       if (matched) {
-        form.setFieldsValue({ model: matched.key });
+        setSelectedModel(matched.key);
       }
     }
   };
 
   // ──────────────────────────────────────────
-  // SAVE ESTIMATE HANDLER
+  // SAVE ESTIMATE
   // ──────────────────────────────────────────
   const handleSaveEstimate = async () => {
     if (!calcResults || calcResults.error) {
-      message.warning('Please complete valid inputs and calculate before saving');
+      message.warning('Please run a valid calculation before saving');
       return;
     }
 
     setSaving(true);
     const formVals = form.getFieldsValue();
+    const angleMode = withAngle ? 'With Angle' : 'Without Angle';
 
     const payload = {
       enquiryId: formVals.enquiryId || undefined,
-      model: formVals.model,
+      model: selectedModel,
       inputData: {
         span: Number(formVals.span),
         length: Number(formVals.length),
         height: Number(formVals.height || 0),
         distance: Number(formVals.distance || 0),
-        angleMode: formVals.angleMode || 'Without Angle',
+        angleMode,
         rates: activeRates
       },
       results: {
         ...calcResults,
         costs
       },
-      status: savedStatus
+      status: 'saved'
     };
 
     try {
       if (estimateId) {
         await api.put(`/estimates/${estimateId}`, payload);
-        message.success('Estimate updated successfully');
+        message.success('Estimate draft updated');
+        setSavedStatus('saved');
+        setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       } else {
         const response = await api.post('/estimates', payload);
         const newId = response.data?.estimate?._id;
         setEstimateId(newId);
-        message.success('Estimate saved successfully to MongoDB Atlas');
+        setSavedStatus('saved');
+        setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        message.success('Estimate saved to database');
         navigate(`/sales/estimates/${newId}`, { replace: true });
       }
     } catch (err) {
@@ -258,9 +300,7 @@ const EstimationPage = () => {
     }
   };
 
-  // ──────────────────────────────────────────
-  // OPEN LOAD ESTIMATES MODAL
-  // ──────────────────────────────────────────
+  // Load saved estimates modal
   const handleOpenLoadModal = async () => {
     setLoadingSavedList(true);
     setLoadModalVisible(true);
@@ -270,482 +310,615 @@ const EstimationPage = () => {
         setSavedEstimatesList(response.data.estimates);
       }
     } catch (err) {
-      console.error('Error fetching estimates list:', err);
-      message.error('Failed to load estimates directory');
+      message.error('Failed to load estimates');
     } finally {
       setLoadingSavedList(false);
     }
   };
 
+  const estimateRefString = estimateId ? `EST-${estimateId.slice(-6).toUpperCase()}` : 'EST-DRAFT';
+
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-      {/* ── HEADER ROW ── */}
-      <Card
-        bordered={false}
-        style={{
-          borderRadius: 14,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-          marginBottom: 20,
-          background: 'linear-gradient(to right, #ffffff, #f8fafc)'
-        }}
-      >
-        <Row gutter={[16, 16]} align="middle" justify="space-between">
-          <Col xs={24} md={12}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: 22
-                }}
-              >
-                <CalculatorOutlined />
-              </div>
-              <div>
-                <Title level={3} style={{ margin: 0, fontWeight: 700 }}>
-                  Estimation Engine
-                </Title>
-                <Text type="secondary">
-                  5 Engineering Structural Models (v60 Mathematical Core)
-                </Text>
-              </div>
-            </div>
-          </Col>
-
-          <Col xs={24} md={12} style={{ textAlign: 'right' }}>
-            <Space wrap>
-              <Button icon={<FolderOpenOutlined />} onClick={handleOpenLoadModal}>
-                Load Estimate
-              </Button>
-              <Button
-                icon={<PrinterOutlined />}
-                onClick={handlePrint}
-                disabled={!calcResults || !!calcResults.error}
-              >
-                Print / PDF Quote
-              </Button>
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                loading={saving}
-                onClick={handleSaveEstimate}
-                style={{
-                  background: 'linear-gradient(135deg, #059669, #047857)',
-                  borderColor: '#059669'
-                }}
-              >
-                {estimateId ? 'Update Estimate' : 'Save Estimate'}
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-
-        <Divider style={{ margin: '16px 0' }} />
-
-        {/* METADATA BAR */}
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} sm={12} md={6}>
-            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>ESTIMATE REF</Text>
-            <Text strong style={{ fontSize: 13, color: '#1e293b' }}>
-              {estimateId ? `EST-${estimateId.slice(-6).toUpperCase()}` : 'NEW DRAFT'}
-            </Text>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>PREPARED BY</Text>
-            <Text strong style={{ fontSize: 13 }}>{user?.name || 'Sales Staff'}</Text>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>DATE</Text>
-            <Text strong style={{ fontSize: 13 }}>{new Date().toLocaleDateString('en-IN')}</Text>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>CLIENT ACCOUNT</Text>
-            <Tag color={selectedEnquiry ? 'blue' : 'default'} style={{ fontSize: 12 }}>
-              {selectedEnquiry?.clientName || 'Not Linked to Enquiry'}
-            </Tag>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* ── INPUT FORM & MODEL SELECTOR ── */}
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{
-          model: 'Normal Cantilever',
-          angleMode: 'Without Angle',
-          span: 6,
-          length: 12,
-          height: 1.5,
-          distance: 25
-        }}
-        onValuesChange={runCalculation}
-      >
-        <Card
-          bordered={false}
-          style={{
-            borderRadius: 14,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-            marginBottom: 20
-          }}
-        >
-          <Row gutter={[20, 16]}>
-            {/* LINK ENQUIRY */}
-            <Col xs={24} md={12}>
-              <Form.Item name="enquiryId" label={<span style={{ fontWeight: 600 }}>Link Client Enquiry</span>}>
+    <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 80 }}>
+      {/* ── SECTION 1: PROJECT DETAILS (.content-card) ── */}
+      <div className="content-card">
+        <div className="content-card__header">
+          <span className="content-card__title">Project Details</span>
+          <span
+            style={{
+              fontFamily: 'monospace',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#0b315d',
+              background: '#eff6ff',
+              border: '1px solid #dde3ea',
+              borderRadius: 4,
+              padding: '2px 8px'
+            }}
+          >
+            #{estimateRefString}
+          </span>
+        </div>
+        <div className="content-card__body">
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={{
+              estimateDate: dayjs(),
+              span: 6,
+              length: 12,
+              height: 1.5,
+              distance: 25
+            }}
+            onValuesChange={runCalculation}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px 20px' }}>
+              <Form.Item name="enquiryId" label="Enquiry" style={{ marginBottom: 0 }}>
                 <Select
-                  placeholder="Select client enquiry (optional)"
+                  placeholder="Search and select enquiry..."
                   allowClear
-                  onChange={handleEnquiryChange}
                   showSearch
                   optionFilterProp="children"
+                  onChange={handleEnquiryChange}
+                  style={{ width: '100%' }}
                 >
                   {enquiries.map((enq) => (
                     <Option key={enq._id} value={enq._id}>
-                      {enq.clientName} ({enq.phone}) — {enq.roofType || 'Enquiry'}
+                      {enq.refNo ? `${enq.refNo} · ` : ''}{enq.clientName} ({enq.phone})
                     </Option>
                   ))}
                 </Select>
               </Form.Item>
-            </Col>
 
-            {/* MODEL SELECTOR */}
-            <Col xs={24} md={12}>
-              <Form.Item
-                name="model"
-                label={<span style={{ fontWeight: 600 }}>Engineering Structural Model</span>}
-                rules={[{ required: true, message: 'Please select a model' }]}
-              >
-                <Select onChange={runCalculation}>
-                  {ENGINEERING_MODELS.map((m) => (
-                    <Option key={m.key} value={m.key}>
-                      {m.label}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={[20, 16]}>
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item
-                name="span"
-                label="Clear Span (m)"
-                tooltip="Width/Span of the roof structure in meters"
-                rules={[{ required: true, message: 'Enter span' }]}
-              >
-                <InputNumber
-                  min={1}
-                  max={60}
-                  step={0.5}
-                  style={{ width: '100%' }}
-                  placeholder="e.g. 6.0"
-                  suffix="m"
+              <Form.Item label="Customer" style={{ marginBottom: 0 }}>
+                <Input
+                  value={selectedEnquiry?.clientName || 'General / Walk-in Customer'}
+                  readOnly
+                  style={{ background: '#f8fafc', color: '#374151', cursor: 'default' }}
                 />
               </Form.Item>
-            </Col>
 
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item
-                name="length"
-                label="Roof Length (m)"
-                tooltip="Total length along the shed in meters"
-                rules={[{ required: true, message: 'Enter length' }]}
-              >
-                <InputNumber
-                  min={1}
-                  max={200}
-                  step={0.5}
-                  style={{ width: '100%' }}
-                  placeholder="e.g. 15.0"
-                  suffix="m"
+              <Form.Item name="estimateDate" label="Estimate Date" style={{ marginBottom: 0 }}>
+                <DatePicker style={{ width: '100%' }} format="DD MMM YYYY" />
+              </Form.Item>
+
+              <Form.Item label="Prepared By" style={{ marginBottom: 0 }}>
+                <Input
+                  value={user?.name || 'Sales Staff'}
+                  readOnly
+                  style={{ background: '#f8fafc', color: '#374151', cursor: 'default' }}
                 />
               </Form.Item>
-            </Col>
+            </div>
+          </Form>
+        </div>
+      </div>
 
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item
-                name="height"
-                label="Projection / Side Height (m)"
-                tooltip="Cantilever height (Max 3.0m for Cantilever models)"
-              >
-                <InputNumber
-                  min={0}
-                  max={12}
-                  step={0.25}
-                  style={{ width: '100%' }}
-                  placeholder="e.g. 1.5"
-                  suffix="m"
-                />
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item
-                name="distance"
-                label="Transportation Distance (km)"
-                tooltip="Distance from plant to erection site"
-              >
-                <InputNumber
-                  min={0}
-                  max={1000}
-                  step={5}
-                  style={{ width: '100%' }}
-                  placeholder="e.g. 25"
-                  suffix="km"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={[20, 16]} align="middle">
-            <Col xs={24} sm={12}>
-              <Form.Item name="angleMode" label="Structural Bracing Mode" style={{ marginBottom: 0 }}>
-                <Radio.Group buttonStyle="solid">
-                  <Radio.Button value="Without Angle">Without Angle</Radio.Button>
-                  <Radio.Button value="With Angle">With Angle</Radio.Button>
-                </Radio.Group>
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
-              <Button
-                type="primary"
-                size="large"
-                icon={<ThunderboltOutlined />}
-                onClick={runCalculation}
-                style={{
-                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                  borderColor: '#2563eb',
-                  fontWeight: 600
-                }}
-              >
-                Compute Engineering
-              </Button>
-            </Col>
-          </Row>
-        </Card>
-      </Form>
-
-      {/* ── ERROR ALERT BANNER ── */}
-      {calcResults?.error === 'Out of Equation' && (
-        <Alert
-          message="Engineering Constraint Error: Out of Equation"
-          description={calcResults.reason}
-          type="error"
-          showIcon
-          style={{ marginBottom: 20, borderRadius: 10, border: '1px solid #f87171' }}
-        />
-      )}
-
-      {/* ── RESULTS SECTION (STATISTIC CARDS) ── */}
-      {calcResults && !calcResults.error && (
-        <div>
-          <Title level={4} style={{ marginBottom: 16 }}>
-            Derived Engineering Geometry & Specifications
-          </Title>
-
-          <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-            <Col xs={12} sm={8} md={4}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#fff' }}>
-                <Statistic
-                  title="Profile Cover"
-                  value={Math.round((calcResults.cover || 0) * 1000)}
-                  suffix="mm"
-                  valueStyle={{ color: '#2563eb', fontWeight: 700 }}
-                />
-              </Card>
-            </Col>
-
-            <Col xs={12} sm={8} md={4}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#fff' }}>
-                <Statistic
-                  title="Thickness"
-                  value={calcResults.th}
-                  suffix="mm BMT"
-                  valueStyle={{ color: '#059669', fontWeight: 700 }}
-                />
-              </Card>
-            </Col>
-
-            <Col xs={12} sm={8} md={4}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#fff' }}>
-                <Statistic
-                  title="Centre Rise"
-                  value={Number(calcResults.rise || 0).toFixed(2)}
-                  suffix="m"
-                  valueStyle={{ color: '#d97706', fontWeight: 700 }}
-                />
-              </Card>
-            </Col>
-
-            <Col xs={12} sm={8} md={4}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#fff' }}>
-                <Statistic
-                  title="Bays / Columns"
-                  value={`${calcResults.bays}B / ${calcResults.ncol}C`}
-                  valueStyle={{ color: '#7c3aed', fontWeight: 700 }}
-                />
-              </Card>
-            </Col>
-
-            <Col xs={12} sm={8} md={4}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#fff' }}>
-                <Statistic
-                  title="Total Panels"
-                  value={calcResults.panels}
-                  suffix="nos"
-                  valueStyle={{ color: '#0284c7', fontWeight: 700 }}
-                />
-              </Card>
-            </Col>
-
-            <Col xs={12} sm={8} md={4}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#fff' }}>
-                <Statistic
-                  title="Effective Length"
-                  value={Number(calcResults.eff || 0).toFixed(2)}
-                  suffix="m"
-                  valueStyle={{ color: '#475569', fontWeight: 700 }}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-            <Col xs={24} sm={12} md={6}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#fff' }}>
-                <Statistic
-                  title="Arc Cut Length"
-                  value={Number(calcResults.cut || 0).toFixed(3)}
-                  suffix="m"
-                  valueStyle={{ color: '#0f172a', fontWeight: 700 }}
-                />
-              </Card>
-            </Col>
-
-            <Col xs={24} sm={12} md={6}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#fff' }}>
-                <Statistic
-                  title="Final Cut Length"
-                  value={Number(calcResults.finalCut || 0).toFixed(3)}
-                  suffix="m"
-                  valueStyle={{ color: '#0891b2', fontWeight: 700 }}
-                />
-              </Card>
-            </Col>
-
-            <Col xs={24} sm={12} md={6}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#eff6ff' }}>
-                <Statistic
-                  title="Calculated Roof Area"
-                  value={Number(calcResults.area || 0).toFixed(1)}
-                  suffix="ft²"
-                  valueStyle={{ color: '#1d4ed8', fontWeight: 800 }}
-                />
-              </Card>
-            </Col>
-
-            <Col xs={24} sm={12} md={6}>
-              <Card bordered={false} style={{ borderRadius: 10, background: '#ecfdf5' }}>
-                <Statistic
-                  title="Total Sheet Weight"
-                  value={Number(calcResults.sheetKg || 0).toFixed(1)}
-                  suffix="kg"
-                  valueStyle={{ color: '#047857', fontWeight: 800 }}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          {/* ── COST SUMMARY ── */}
-          {costs && (
-            <Card
-              bordered={false}
-              style={{
-                borderRadius: 14,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-                marginBottom: 24,
-                background: '#ffffff'
-              }}
-            >
-              <Title level={4} style={{ margin: '0 0 16px 0' }}>
-                Financial Cost & Commercial Quotation
-              </Title>
-
-              <Row gutter={[16, 16]}>
-                <Col xs={24} md={14}>
-                  <Descriptions bordered column={1} size="middle">
-                    <Descriptions.Item label="Sheet Material Cost">
-                      ₹{costs.sheetCost.toLocaleString('en-IN')}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Structural Labour Cost">
-                      ₹{costs.labourCost.toLocaleString('en-IN')}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Consumables & Hardware">
-                      ₹{costs.consumables.toLocaleString('en-IN')}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Total Before GST">
-                      <Text strong style={{ fontSize: 16 }}>
-                        ₹{costs.beforeGst.toLocaleString('en-IN')}
-                      </Text>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="GST (18%)">
-                      ₹{costs.gst.toLocaleString('en-IN')}
-                    </Descriptions.Item>
-                  </Descriptions>
-                </Col>
-
-                <Col xs={24} md={10}>
+      {/* ── SECTION 2: ENGINEERING MODEL (.content-card) ── */}
+      <div className="content-card">
+        <div className="content-card__header">
+          <span className="content-card__title">Select Model</span>
+        </div>
+        <div className="content-card__body">
+          {/* 5 Model Selector Cards */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              flexWrap: 'wrap',
+              marginBottom: 16
+            }}
+          >
+            {MODEL_CARDS.map((m) => {
+              const isSelected = selectedModel === m.key;
+              return (
+                <div
+                  key={m.key}
+                  onClick={() => {
+                    setSelectedModel(m.key);
+                    setTimeout(runCalculation, 0);
+                  }}
+                  style={{
+                    flex: '1 1 150px',
+                    minWidth: 140,
+                    background: isSelected ? '#eff6ff' : '#ffffff',
+                    border: `1px solid ${isSelected ? '#0b315d' : '#dde3ea'}`,
+                    borderRadius: 8,
+                    padding: '16px 12px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    boxShadow: isSelected ? '0 0 0 3px rgba(11,49,93,0.08)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ color: isSelected ? '#0b315d' : '#6b7280', marginBottom: 8 }}>
+                    {m.icon}
+                  </div>
                   <div
                     style={{
-                      background: 'linear-gradient(135deg, #0b315d, #123b91)',
-                      borderRadius: 16,
-                      padding: '24px 20px',
-                      color: '#ffffff',
-                      textAlign: 'center',
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center'
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: isSelected ? '#0b315d' : '#111827',
+                      lineHeight: 1.3,
+                      marginBottom: 4
                     }}
                   >
-                    <Text style={{ color: '#93c5fd', textTransform: 'uppercase', letterSpacing: 1, fontSize: 12 }}>
-                      Grand Total (All-Inclusive)
-                    </Text>
-                    <div style={{ fontSize: 36, fontWeight: 800, margin: '8px 0', color: '#ffffff' }}>
-                      ₹{costs.grandTotal.toLocaleString('en-IN')}
-                    </div>
-                    <Text style={{ color: '#cbd5e1', fontSize: 13 }}>
-                      ₹{(costs.grandTotal / (calcResults.area || 1)).toFixed(2)} per ft² (incl. GST)
-                    </Text>
-                    <div style={{ marginTop: 16 }}>
-                      <Tag color="gold" style={{ padding: '4px 12px', fontSize: 12 }}>
-                        GST 18% Compliant
-                      </Tag>
-                    </div>
+                    {m.name}
                   </div>
-                </Col>
-              </Row>
-            </Card>
-          )}
+                  <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.3 }}>
+                    {m.desc}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* With Angle Toggle */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              paddingTop: 12,
+              borderTop: '1px solid #dde3ea'
+            }}
+          >
+            <Switch
+              checked={withAngle}
+              onChange={(checked) => {
+                setWithAngle(checked);
+                setTimeout(runCalculation, 0);
+              }}
+            />
+            <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
+              Include angle pricing
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── SECTION 3: DIMENSIONS (.content-card) ── */}
+      <div className="content-card">
+        <div className="content-card__header">
+          <span className="content-card__title">Dimensions</span>
+        </div>
+        <div className="content-card__body">
+          <Form form={form} layout="vertical" onValuesChange={runCalculation}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                gap: 16,
+                marginBottom: 20
+              }}
+            >
+              <Form.Item
+                name="span"
+                label="Span (m)"
+                rules={[{ required: true, message: 'Enter span' }]}
+                style={{ marginBottom: 0 }}
+              >
+                <InputNumber
+                  min={0}
+                  step={0.1}
+                  style={{ width: '100%', height: 38 }}
+                  placeholder="e.g. 6.0"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="length"
+                label="Length (m)"
+                rules={[{ required: true, message: 'Enter length' }]}
+                style={{ marginBottom: 0 }}
+              >
+                <InputNumber
+                  min={0}
+                  step={0.1}
+                  style={{ width: '100%', height: 38 }}
+                  placeholder="e.g. 12.0"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="height"
+                label="Height (m)"
+                style={{ marginBottom: 0 }}
+              >
+                <InputNumber
+                  min={0}
+                  step={0.1}
+                  style={{ width: '100%', height: 38 }}
+                  placeholder="e.g. 1.5"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="distance"
+                label="Distance (km)"
+                style={{ marginBottom: 0 }}
+              >
+                <InputNumber
+                  min={0}
+                  step={1}
+                  style={{ width: '100%', height: 38 }}
+                  placeholder="e.g. 25"
+                />
+              </Form.Item>
+            </div>
+
+            <Button
+              type="primary"
+              icon={<ThunderboltOutlined />}
+              onClick={runCalculation}
+              style={{
+                width: '100%',
+                height: 42,
+                fontSize: 14,
+                fontWeight: 600,
+                background: '#0b315d',
+                borderColor: '#0b315d'
+              }}
+            >
+              Run Calculation
+            </Button>
+          </Form>
+        </div>
+      </div>
+
+      {/* ── SECTION 4: ENGINEERING RESULTS (.content-card, visible after calc) ── */}
+      {calcResults && (
+        <div className="content-card">
+          <div className="content-card__header">
+            <span className="content-card__title">Engineering Results</span>
+            {calcResults.error ? (
+              <Tag color="error" style={{ borderRadius: 4 }}>Error</Tag>
+            ) : (
+              <Tag color="success" style={{ borderRadius: 4 }}>Engineered OK</Tag>
+            )}
+          </div>
+          <div className="content-card__body">
+            {calcResults.error === 'Out of Equation' ? (
+              <Alert
+                type="error"
+                showIcon
+                message="Out of Equation"
+                description="Cantilever height must be 3.0 m or less. Reduce the height and recalculate."
+                style={{ borderRadius: 8 }}
+              />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* 3x2 Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                  {/* Row 1 */}
+                  <div className="stat-card" style={{ padding: 14, gap: 4 }}>
+                    <span className="stat-card__label">Cover Width</span>
+                    <span className="stat-card__value" style={{ fontSize: 20 }}>
+                      {Math.round((calcResults.cover || 0) * 1000)} mm
+                    </span>
+                  </div>
+                  <div className="stat-card" style={{ padding: 14, gap: 4 }}>
+                    <span className="stat-card__label">Sheet Thickness</span>
+                    <span className="stat-card__value" style={{ fontSize: 20 }}>
+                      {calcResults.th} mm BMT
+                    </span>
+                  </div>
+                  <div className="stat-card" style={{ padding: 14, gap: 4 }}>
+                    <span className="stat-card__label">Centre Rise</span>
+                    <span className="stat-card__value" style={{ fontSize: 20 }}>
+                      {Number(calcResults.rise || 0).toFixed(2)} m
+                    </span>
+                  </div>
+
+                  {/* Row 2 */}
+                  <div className="stat-card" style={{ padding: 14, gap: 4 }}>
+                    <span className="stat-card__label">Panels</span>
+                    <span className="stat-card__value" style={{ fontSize: 20 }}>
+                      {calcResults.panels}
+                    </span>
+                  </div>
+                  <div className="stat-card" style={{ padding: 14, gap: 4 }}>
+                    <span className="stat-card__label">Columns</span>
+                    <span className="stat-card__value" style={{ fontSize: 20 }}>
+                      {calcResults.ncol}
+                    </span>
+                  </div>
+                  <div className="stat-card" style={{ padding: 14, gap: 4 }}>
+                    <span className="stat-card__label">Bays</span>
+                    <span className="stat-card__value" style={{ fontSize: 20 }}>
+                      {calcResults.bays}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Row 3: Full width 4-item strip */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    gap: 12,
+                    background: '#f8fafc',
+                    border: '1px solid #dde3ea',
+                    borderRadius: 8,
+                    padding: 16
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: 11, color: '#6b7280', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Arc Cut Length
+                    </span>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>
+                      {Number(calcResults.cut || 0).toFixed(3)} m
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: '#6b7280', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Final Cut Length
+                    </span>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>
+                      {Number(calcResults.finalCut || 0).toFixed(3)} m
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: '#6b7280', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Roof Area (ft²)
+                    </span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#0b315d' }}>
+                      {Number(calcResults.area || 0).toFixed(1)} ft²
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: '#6b7280', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Sheet Weight (kg)
+                    </span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#15803d' }}>
+                      {Number(calcResults.sheetKg || 0).toFixed(1)} kg
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* ── PRINTABLE QUOTATION CONTAINER (Hidden on Screen, visible on print) ── */}
+      {/* ── SECTION 5: COST SUMMARY (.content-card) ── */}
+      {costs && !calcResults?.error && (
+        <div className="content-card">
+          <div className="content-card__header">
+            <span className="content-card__title">Cost Summary</span>
+          </div>
+          <div className="content-card__body">
+            {/* Structured Line-Item Div Table */}
+            <div style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+              {/* Header */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr 1.2fr',
+                  padding: '8px 12px',
+                  background: '#f8fafc',
+                  borderBottom: '1px solid #b8c4ce',
+                  fontWeight: 600,
+                  fontSize: 11,
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em'
+                }}
+              >
+                <span>Item Label</span>
+                <span style={{ textAlign: 'center' }}>Rate</span>
+                <span style={{ textAlign: 'center' }}>Qty / Unit</span>
+                <span style={{ textAlign: 'right' }}>Amount</span>
+              </div>
+
+              {/* Rows */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr 1.2fr',
+                  padding: '12px',
+                  borderBottom: '1px solid #f0f4f8'
+                }}
+              >
+                <span style={{ fontWeight: 500, color: '#111827' }}>Sheet Material</span>
+                <span style={{ textAlign: 'center', color: '#6b7280' }}>
+                  ₹{activeRates.sheetRate || 48}/ft²
+                </span>
+                <span style={{ textAlign: 'center', color: '#6b7280' }}>
+                  {calcResults.area?.toFixed(1)} ft²
+                </span>
+                <span style={{ textAlign: 'right', fontWeight: 600, color: '#111827' }}>
+                  ₹ {costs.sheetCost.toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr 1.2fr',
+                  padding: '12px',
+                  borderBottom: '1px solid #f0f4f8'
+                }}
+              >
+                <span style={{ fontWeight: 500, color: '#111827' }}>Structural Labour</span>
+                <span style={{ textAlign: 'center', color: '#6b7280' }}>
+                  ₹{activeRates.structLabRate || 26}/kg
+                </span>
+                <span style={{ textAlign: 'center', color: '#6b7280' }}>
+                  {calcResults.sheetKg?.toFixed(1)} kg
+                </span>
+                <span style={{ textAlign: 'right', fontWeight: 600, color: '#111827' }}>
+                  ₹ {costs.labourCost.toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr 1.2fr',
+                  padding: '12px',
+                  borderBottom: '1px solid #f0f4f8'
+                }}
+              >
+                <span style={{ fontWeight: 500, color: '#111827' }}>Structure Consumables</span>
+                <span style={{ textAlign: 'center', color: '#6b7280' }}>
+                  ₹{activeRates.structConRate || 2}/kg
+                </span>
+                <span style={{ textAlign: 'center', color: '#6b7280' }}>
+                  {calcResults.sheetKg?.toFixed(1)} kg
+                </span>
+                <span style={{ textAlign: 'right', fontWeight: 600, color: '#111827' }}>
+                  ₹ {Math.round(calcResults.sheetKg * (activeRates.structConRate || 2)).toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr 1.2fr',
+                  padding: '12px',
+                  borderBottom: '1px solid #dde3ea'
+                }}
+              >
+                <span style={{ fontWeight: 500, color: '#111827' }}>Roofing Consumables</span>
+                <span style={{ textAlign: 'center', color: '#6b7280' }}>
+                  ₹{activeRates.roofConRate || 2}/ft²
+                </span>
+                <span style={{ textAlign: 'center', color: '#6b7280' }}>
+                  {calcResults.area?.toFixed(1)} ft²
+                </span>
+                <span style={{ textAlign: 'right', fontWeight: 600, color: '#111827' }}>
+                  ₹ {Math.round(calcResults.area * (activeRates.roofConRate || 2)).toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              {/* Subtotal */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '4fr 1.2fr',
+                  padding: '12px',
+                  borderBottom: '1px solid #dde3ea'
+                }}
+              >
+                <span style={{ fontWeight: 600, color: '#374151' }}>Subtotal (Before GST)</span>
+                <span style={{ textAlign: 'right', fontWeight: 600, color: '#111827' }}>
+                  ₹ {costs.beforeGst.toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              {/* GST */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '4fr 1.2fr',
+                  padding: '12px',
+                  borderBottom: '2px solid #0b315d'
+                }}
+              >
+                <span style={{ color: '#6b7280' }}>GST @ 18%</span>
+                <span style={{ textAlign: 'right', color: '#6b7280' }}>
+                  ₹ {costs.gst.toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              {/* Grand Total */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '4fr 1.2fr',
+                  padding: '16px 12px',
+                  background: '#eff6ff',
+                  alignItems: 'center'
+                }}
+              >
+                <span style={{ fontSize: 16, fontWeight: 700, color: '#0b315d' }}>GRAND TOTAL</span>
+                <span
+                  style={{
+                    textAlign: 'right',
+                    fontSize: 20,
+                    fontWeight: 700,
+                    color: '#0b315d'
+                  }}
+                >
+                  ₹ {costs.grandTotal.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14, fontSize: 11, color: '#9ca3af' }}>
+              Rates from: Admin Masters · Last updated {new Date().toLocaleDateString('en-IN')}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── STICKY FOOTER BAR ── */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: '#ffffff',
+          borderTop: '1px solid #dde3ea',
+          padding: '12px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          boxShadow: '0 -2px 8px rgba(0,0,0,.06)',
+          zIndex: 100
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Tag
+            style={{
+              background: savedStatus === 'saved' ? '#f0fdf4' : '#f3f6f9',
+              color: savedStatus === 'saved' ? '#15803d' : '#6b7280',
+              border: '1px solid #dde3ea',
+              fontWeight: 600,
+              fontSize: 11,
+              borderRadius: 4
+            }}
+          >
+            {savedStatus.toUpperCase()}
+          </Tag>
+          <span style={{ fontSize: 11, color: '#9ca3af' }}>
+            {lastSavedTime ? `Last saved at ${lastSavedTime}` : 'Not yet saved'}
+          </span>
+        </div>
+
+        <Space size={10}>
+          <Button icon={<FolderOpenOutlined />} onClick={handleOpenLoadModal}>
+            Load Estimate
+          </Button>
+          <Button
+            icon={<SaveOutlined />}
+            loading={saving}
+            onClick={handleSaveEstimate}
+          >
+            Save Draft
+          </Button>
+          <Button
+            type="primary"
+            icon={<PrinterOutlined />}
+            onClick={handlePrint}
+            disabled={!calcResults || !!calcResults.error}
+            style={{ background: '#0b315d', borderColor: '#0b315d' }}
+          >
+            Print Quote
+          </Button>
+        </Space>
+      </div>
+
+      {/* ── HIDDEN PRINTABLE CONTAINER FOR REACT-TO-PRINT ── */}
       <div style={{ display: 'none' }}>
         <div ref={printRef} style={{ padding: '30px', fontFamily: 'Arial, sans-serif', color: '#0f172a' }}>
           <div style={{ borderBottom: '3px solid #0b315d', paddingBottom: 16, marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h1 style={{ margin: 0, color: '#0b315d', fontSize: 26, fontWeight: 800 }}>
+                <h1 style={{ margin: 0, color: '#0b315d', fontSize: 24, fontWeight: 700 }}>
                   I ROOFING ENTERPRISES
                 </h1>
                 <p style={{ margin: '4px 0', color: '#64748b', fontSize: 12 }}>
@@ -753,9 +926,9 @@ const EstimationPage = () => {
                 </p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <h3 style={{ margin: 0, color: '#059669', fontSize: 18 }}>FORMAL ESTIMATE</h3>
+                <h3 style={{ margin: 0, color: '#15803d', fontSize: 16 }}>FORMAL ESTIMATE</h3>
                 <p style={{ margin: '4px 0', fontSize: 12 }}>
-                  Ref: {estimateId ? `EST-${estimateId.slice(-6).toUpperCase()}` : 'DRAFT'}
+                  Ref: #{estimateRefString}
                 </p>
                 <p style={{ margin: 0, fontSize: 12 }}>Date: {new Date().toLocaleDateString('en-IN')}</p>
               </div>
@@ -777,7 +950,7 @@ const EstimationPage = () => {
                 <td style={{ width: '50%', verticalAlign: 'top' }}>
                   <strong>Engineering Specifications:</strong>
                   <br />
-                  Model: {calcResults?.type || 'Standard'}
+                  Model: {selectedModel}
                   <br />
                   Span: {calcResults?.span}m | Length: {calcResults?.length}m | Height: {calcResults?.height}m
                   <br />
@@ -789,7 +962,7 @@ const EstimationPage = () => {
 
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, fontSize: 13 }}>
             <thead>
-              <tr style={{ background: '#f1f5f9' }}>
+              <tr style={{ background: '#f8fafc' }}>
                 <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'left' }}>Item Description</th>
                 <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center' }}>Qty / Spec</th>
                 <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Amount (₹)</th>
@@ -843,7 +1016,7 @@ const EstimationPage = () => {
                   ₹{costs?.gst.toLocaleString('en-IN')}
                 </td>
               </tr>
-              <tr style={{ background: '#0b315d', color: '#ffffff', fontWeight: 800, fontSize: 16 }}>
+              <tr style={{ background: '#0b315d', color: '#ffffff', fontWeight: 700, fontSize: 15 }}>
                 <td colSpan={2} style={{ border: '1px solid #0b315d', padding: '10px', textAlign: 'right' }}>
                   Grand Total:
                 </td>
@@ -868,7 +1041,7 @@ const EstimationPage = () => {
         open={loadModalVisible}
         onCancel={() => setLoadModalVisible(false)}
         footer={null}
-        width={750}
+        width={720}
         destroyOnClose
       >
         <Table
@@ -876,12 +1049,17 @@ const EstimationPage = () => {
           rowKey="_id"
           loading={loadingSavedList}
           pagination={{ pageSize: 5 }}
+          size="middle"
           columns={[
             {
-              title: 'Ref',
+              title: 'Ref #',
               dataIndex: '_id',
               key: 'id',
-              render: (id) => <Text code>EST-{id.slice(-6).toUpperCase()}</Text>
+              render: (id) => (
+                <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>
+                  EST-{id.slice(-6).toUpperCase()}
+                </span>
+              )
             },
             {
               title: 'Client',
@@ -899,7 +1077,7 @@ const EstimationPage = () => {
               key: 'total',
               render: (_, r) => {
                 const total = r.results?.costs?.grandTotal || r.results?.costs?.beforeGst || 0;
-                return <Text strong>₹{Number(total).toLocaleString('en-IN')}</Text>;
+                return <span style={{ fontWeight: 600 }}>₹{Number(total).toLocaleString('en-IN')}</span>;
               }
             },
             {
@@ -915,6 +1093,7 @@ const EstimationPage = () => {
                     setLoadModalVisible(false);
                     navigate(`/sales/estimates/${r._id}`);
                   }}
+                  style={{ background: '#0b315d', borderColor: '#0b315d' }}
                 >
                   Load
                 </Button>

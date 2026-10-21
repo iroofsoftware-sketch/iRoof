@@ -8,48 +8,44 @@ import {
   Select,
   Tag,
   Space,
-  Typography,
-  Card,
-  Popconfirm,
-  message,
-  Switch,
   Avatar,
-  Row,
-  Col
+  Switch,
+  Popconfirm,
+  message
 } from 'antd';
 import {
-  UserAddOutlined,
+  PlusOutlined,
   EditOutlined,
-  ReloadOutlined,
-  UserOutlined,
+  DeleteOutlined,
   SearchOutlined,
-  CheckCircleOutlined,
-  StopOutlined
+  ReloadOutlined
 } from '@ant-design/icons';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 
-const { Title, Text } = Typography;
 const { Option } = Select;
 
-export const ROLES_CONFIG = [
-  { key: 'admin', label: 'Admin (Administration)', color: '#ef4444' },
-  { key: 'sales', label: 'Sales (Enquiries & Estimates)', color: '#3b82f6' },
-  { key: 'accounts', label: 'Accounts (Approvals & Invoices)', color: '#10b981' },
-  { key: 'design', label: 'Design (Drawings & BOQ)', color: '#8b5cf6' },
-  { key: 'projectmanager', label: 'Project Manager (Sites & Teams)', color: '#f59e0b' },
-  { key: 'purchase', label: 'Purchase (POs & Suppliers)', color: '#06b6d4' },
-  { key: 'workshop', label: 'Workshop (Fabrication Jobs)', color: '#ec4899' },
-  { key: 'sitevisitor', label: 'Site Visitor (Mobile Field Visits)', color: '#6366f1' }
-];
+const ROLE_CONFIG = {
+  admin: { bg: '#dbeafe', color: '#1e40af', label: 'Admin' },
+  sales: { bg: '#fce7f3', color: '#9d174d', label: 'Sales' },
+  accounts: { bg: '#d1fae5', color: '#065f46', label: 'Accounts' },
+  design: { bg: '#ede9fe', color: '#5b21b6', label: 'Design' },
+  projectmanager: { bg: '#ffedd5', color: '#c2410c', label: 'Project Manager' },
+  purchase: { bg: '#cffafe', color: '#155e75', label: 'Purchase' },
+  workshop: { bg: '#fef9c3', color: '#854d0e', label: 'Workshop' },
+  sitevisitor: { bg: '#f1f5f9', color: '#475569', label: 'Site Visitor' }
+};
 
 const UsersPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const [form] = Form.useForm();
   const currentAdmin = useAuthStore((state) => state.user);
@@ -73,7 +69,7 @@ const UsersPage = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleOpenCreateModal = () => {
+  const handleOpenAddModal = () => {
     setEditingUser(null);
     form.resetFields();
     form.setFieldsValue({ role: 'sales', isActive: true });
@@ -95,29 +91,23 @@ const UsersPage = () => {
   const handleModalSubmit = async (values) => {
     try {
       if (editingUser) {
-        // Edit user
         const payload = {
           name: values.name,
           email: values.email,
           role: values.role,
           isActive: values.isActive
         };
-        if (values.password && values.password.trim()) {
-          payload.password = values.password.trim();
-        }
-
         const response = await api.put(`/admin/users/${editingUser._id}`, payload);
         message.success(response.data?.message || 'User updated successfully');
       } else {
-        // Create user
         const response = await api.post('/admin/users', {
           name: values.name,
           email: values.email,
           password: values.password,
           role: values.role,
-          isActive: values.isActive
+          isActive: values.isActive !== undefined ? values.isActive : true
         });
-        message.success(response.data?.message || 'New user created successfully');
+        message.success(response.data?.message || 'User created successfully');
       }
 
       setModalVisible(false);
@@ -129,125 +119,163 @@ const UsersPage = () => {
     }
   };
 
-  const handleToggleActive = async (user) => {
+  const handleDeleteUser = async (userId) => {
     try {
-      const response = await api.patch(`/admin/users/${user._id}/toggle`);
-      message.success(response.data?.message || 'Status updated');
-      setUsers((prev) =>
-        prev.map((u) => (u._id === user._id ? { ...u, isActive: !u.isActive } : u))
-      );
+      await api.delete(`/admin/users/${userId}`);
+      message.success('User deleted successfully');
+      setUsers((prev) => prev.filter((u) => u._id !== userId));
     } catch (error) {
-      console.error('Toggle error:', error);
-      message.error(error.response?.data?.message || 'Failed to toggle status');
+      // If delete fails, attempt toggle inactive
+      try {
+        await api.patch(`/admin/users/${userId}/toggle`);
+        message.info('User deactivated');
+        fetchUsers();
+      } catch (err) {
+        message.error('Failed to remove user');
+      }
     }
+  };
+
+  // Filter logic
+  const isFiltered = searchQuery.trim() !== '' || roleFilter !== 'all' || statusFilter !== 'all';
+  const clearFilters = () => {
+    setSearchQuery('');
+    setRoleFilter('all');
+    setStatusFilter('all');
   };
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
+      !searchQuery.trim() ||
       (u.name && u.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()));
+
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
-    return matchesSearch && matchesRole;
+
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && u.isActive) ||
+      (statusFilter === 'inactive' && !u.isActive);
+
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
   const columns = [
     {
-      title: 'User',
-      key: 'name',
+      title: 'USER',
+      key: 'user',
       render: (_, record) => {
-        const roleCfg = ROLES_CONFIG.find((r) => r.key === record.role);
+        const initials = record.name
+          ? record.name
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2)
+          : 'U';
+
         return (
-          <Space>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Avatar
-              style={{ backgroundColor: roleCfg?.color || '#1677ff' }}
-              icon={<UserOutlined />}
+              size={34}
+              style={{
+                backgroundColor: '#c9940a',
+                color: '#ffffff',
+                fontWeight: 600,
+                fontSize: 12
+              }}
             >
-              {record.name?.charAt(0)?.toUpperCase()}
+              {initials}
             </Avatar>
             <div>
-              <Text strong style={{ display: 'block' }}>
-                {record.name}
-              </Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                {record.email}
-              </Text>
+              <div style={{ fontWeight: 500, color: '#111827', fontSize: 13 }}>{record.name}</div>
+              <div style={{ color: '#6b7280', fontSize: 12 }}>{record.email}</div>
             </div>
-          </Space>
+          </div>
         );
       }
     },
     {
-      title: 'Role / Department',
+      title: 'ROLE',
       dataIndex: 'role',
       key: 'role',
       render: (role) => {
-        const roleCfg = ROLES_CONFIG.find((r) => r.key === role);
+        const cfg = ROLE_CONFIG[role] || { bg: '#f1f5f9', color: '#475569', label: role };
         return (
-          <Tag color={roleCfg?.color || 'blue'} style={{ borderRadius: 6, fontWeight: 500 }}>
-            {roleCfg?.label || role}
+          <Tag
+            bordered={false}
+            style={{
+              backgroundColor: cfg.bg,
+              color: cfg.color,
+              fontWeight: 500,
+              fontSize: 11,
+              borderRadius: 4,
+              padding: '2px 8px',
+              margin: 0
+            }}
+          >
+            {cfg.label}
           </Tag>
         );
       }
     },
     {
-      title: 'Status',
+      title: 'STATUS',
       dataIndex: 'isActive',
       key: 'isActive',
-      render: (isActive, record) => {
-        const isSelf = currentAdmin?._id === record._id;
-        return (
-          <Space orientation="horizontal" size={8}>
-            <Tag
-              icon={isActive ? <CheckCircleOutlined /> : <StopOutlined />}
-              color={isActive ? 'success' : 'default'}
-              style={{ borderRadius: 6 }}
-            >
-              {isActive ? 'Active' : 'Inactive'}
-            </Tag>
-            <Switch
-              size="small"
-              checked={isActive}
-              disabled={isSelf}
-              onChange={() => handleToggleActive(record)}
-            />
-          </Space>
-        );
-      }
+      render: (isActive) => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500 }}>
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              backgroundColor: isActive ? '#15803d' : '#9ca3af'
+            }}
+          />
+          <span style={{ color: isActive ? '#15803d' : '#6b7280' }}>
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
+        </span>
+      )
     },
     {
-      title: 'Created Date',
+      title: 'CREATED',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (val) => (val ? new Date(val).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      }) : '—')
+      render: (val) => (
+        <span style={{ color: '#6b7280', fontSize: 12 }}>
+          {val
+            ? new Date(val).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+              })
+            : '—'}
+        </span>
+      )
     },
     {
-      title: 'Actions',
+      title: 'ACTIONS',
       key: 'actions',
       align: 'right',
       render: (_, record) => (
-        <Space>
+        <Space size={4}>
           <Button
             type="text"
-            icon={<EditOutlined />}
+            size="small"
+            icon={<EditOutlined style={{ color: '#0b315d' }} />}
             onClick={() => handleOpenEditModal(record)}
-          >
-            Edit
-          </Button>
+          />
           {currentAdmin?._id !== record._id && (
             <Popconfirm
-              title={`${record.isActive ? 'Deactivate' : 'Activate'} user`}
-              description={`Are you sure you want to ${record.isActive ? 'deactivate' : 'activate'} ${record.name}?`}
-              onConfirm={() => handleToggleActive(record)}
+              title="Delete user account?"
+              description={`Permanently remove ${record.name}?`}
+              onConfirm={() => handleDeleteUser(record._id)}
               okText="Yes"
               cancelText="No"
             >
-              <Button type="text" danger={record.isActive}>
-                {record.isActive ? 'Deactivate' : 'Activate'}
-              </Button>
+              <Button type="text" size="small" danger icon={<DeleteOutlined />} />
             </Popconfirm>
           )}
         </Space>
@@ -257,93 +285,95 @@ const UsersPage = () => {
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-          flexWrap: 'wrap',
-          gap: 16
-        }}
-      >
+      {/* ── HEADER ROW ── */}
+      <div className="page-header">
         <div>
-          <Title level={2} style={{ margin: 0 }}>User Management</Title>
-          <Text type="secondary">
-            Manage staff accounts and assign permissions across the 8 iRoof departments.
-          </Text>
+          <h1 className="page-title">User Management</h1>
+          <p className="page-subtitle">Manage access and roles for all staff</p>
         </div>
-
         <Space>
           <Button icon={<ReloadOutlined />} onClick={fetchUsers} loading={loading}>
             Refresh
           </Button>
-          <Button
-            type="primary"
-            icon={<UserAddOutlined />}
-            onClick={handleOpenCreateModal}
-            style={{
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              borderColor: '#2563eb'
-            }}
-          >
-            Create User
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenAddModal}>
+            Add User
           </Button>
         </Space>
       </div>
 
-      <Card
-        bordered={false}
+      {/* ── FILTER BAR ── */}
+      <div
         style={{
-          borderRadius: 12,
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
-          marginBottom: 24
+          background: '#ffffff',
+          border: '1px solid #dde3ea',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          gap: 10,
+          alignItems: 'center',
+          flexWrap: 'wrap'
         }}
-        bodyStyle={{ padding: 20 }}
       >
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={24} md={12} lg={8}>
-            <Input
-              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-              placeholder="Search by name or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              allowClear
-            />
-          </Col>
-          <Col xs={24} md={12} lg={6}>
-            <Select
-              value={roleFilter}
-              onChange={(val) => setRoleFilter(val)}
-              style={{ width: '100%' }}
-            >
-              <Option value="all">All Roles (8 Departments)</Option>
-              {ROLES_CONFIG.map((r) => (
-                <Option key={r.key} value={r.key}>
-                  {r.label}
-                </Option>
-              ))}
-            </Select>
-          </Col>
-        </Row>
+        <Input
+          prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+          placeholder="Search by name, email..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          allowClear
+          style={{ width: 260 }}
+        />
 
+        <Select
+          value={roleFilter}
+          onChange={(val) => setRoleFilter(val)}
+          style={{ width: 180 }}
+        >
+          <Option value="all">All Roles</Option>
+          {Object.entries(ROLE_CONFIG).map(([key, val]) => (
+            <Option key={key} value={key}>
+              {val.label}
+            </Option>
+          ))}
+        </Select>
+
+        <Select
+          value={statusFilter}
+          onChange={(val) => setStatusFilter(val)}
+          style={{ width: 140 }}
+        >
+          <Option value="all">All Status</Option>
+          <Option value="active">Active</Option>
+          <Option value="inactive">Inactive</Option>
+        </Select>
+
+        {isFiltered && (
+          <Button type="link" onClick={clearFilters} style={{ color: '#6b7280', fontSize: 13, padding: 0 }}>
+            Clear filters
+          </Button>
+        )}
+      </div>
+
+      {/* ── TABLE CONTAINER ── */}
+      <div className="content-card">
         <Table
           columns={columns}
           dataSource={filteredUsers}
           rowKey="_id"
           loading={loading}
           pagination={{ pageSize: 10, showSizeChanger: true }}
-          locale={{ emptyText: 'No staff users found' }}
+          size="middle"
         />
-      </Card>
+      </div>
 
-      {/* Create / Edit User Modal */}
+      {/* ── ADD / EDIT MODAL ── */}
       <Modal
-        title={editingUser ? `Edit User: ${editingUser.name}` : 'Create New User Account'}
+        title={editingUser ? 'Edit User' : 'Add User'}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
         destroyOnClose
+        width={480}
       >
         <Form
           form={form}
@@ -354,59 +384,67 @@ const UsersPage = () => {
           <Form.Item
             name="name"
             label="Full Name"
-            rules={[{ required: true, message: 'Please enter user full name' }]}
+            rules={[{ required: true, message: 'Please enter full name' }]}
           >
             <Input placeholder="e.g. Rahul Sharma" />
           </Form.Item>
 
           <Form.Item
             name="email"
-            label="Email Address"
+            label="Username / Email"
             rules={[
-              { required: true, message: 'Please enter an email' },
-              { type: 'email', message: 'Enter a valid email' }
+              { required: true, message: 'Please enter email' },
+              { type: 'email', message: 'Enter a valid email address' }
             ]}
           >
             <Input placeholder="e.g. rahul@iroof.com" />
           </Form.Item>
 
-          <Form.Item
-            name="password"
-            label={editingUser ? 'New Password (leave blank to keep current)' : 'Password'}
-            rules={
-              editingUser
-                ? [{ min: 6, message: 'Password must be at least 6 characters' }]
-                : [
-                    { required: true, message: 'Please set an initial password' },
-                    { min: 6, message: 'Password must be at least 6 characters' }
-                  ]
-            }
-          >
-            <Input.Password placeholder={editingUser ? 'Leave blank to preserve' : 'Min 6 characters'} />
-          </Form.Item>
+          {/* Password only on Add User */}
+          {!editingUser && (
+            <Form.Item
+              name="password"
+              label="Password"
+              rules={[
+                { required: true, message: 'Please enter password' },
+                { min: 6, message: 'Password must be at least 6 characters' }
+              ]}
+            >
+              <Input.Password placeholder="Min 6 characters" />
+            </Form.Item>
+          )}
 
           <Form.Item
             name="role"
-            label="Department / Role"
-            rules={[{ required: true, message: 'Please assign a role' }]}
+            label="Role"
+            rules={[{ required: true, message: 'Please select role' }]}
           >
-            <Select placeholder="Select department role">
-              {ROLES_CONFIG.map((r) => (
-                <Option key={r.key} value={r.key}>
-                  {r.label}
+            <Select placeholder="Select role">
+              {Object.entries(ROLE_CONFIG).map(([key, val]) => (
+                <Option key={key} value={key}>
+                  {val.label}
                 </Option>
               ))}
             </Select>
           </Form.Item>
 
-          <Form.Item name="isActive" label="Account Active" valuePropName="checked">
+          <Form.Item name="isActive" label="Active" valuePropName="checked">
             <Switch />
           </Form.Item>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 8,
+              marginTop: 24,
+              paddingTop: 16,
+              borderTop: '1px solid #dde3ea'
+            }}
+          >
             <Button onClick={() => setModalVisible(false)}>Cancel</Button>
             <Button type="primary" htmlType="submit">
-              {editingUser ? 'Update User' : 'Create Account'}
+              Save
             </Button>
           </div>
         </Form>

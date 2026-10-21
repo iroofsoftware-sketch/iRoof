@@ -6,7 +6,8 @@ const {
   getUsers,
   createUser,
   updateUser,
-  toggleUserStatus
+  toggleUserStatus,
+  deleteUser
 } = require('../controllers/adminUserController');
 const {
   getRates,
@@ -28,11 +29,13 @@ router.get('/users', getUsers);
 router.post('/users', createUser);
 router.put('/users/:id', updateUser);
 router.patch('/users/:id/toggle', toggleUserStatus);
+router.delete('/users/:id', deleteUser);
 
 // Rate Master Routes
 router.get('/rates', getRates);
 router.post('/rates', createRate);
 router.put('/rates/:id', updateRate);
+router.patch('/rates/:id', updateRate);
 router.delete('/rates/:id', deleteRate);
 
 // Section Master Routes

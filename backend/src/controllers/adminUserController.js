@@ -192,6 +192,38 @@ const toggleUserStatus = async (req, res) => {
       message: 'Failed to toggle user status',
       error: error.message
     });
+// @desc    Delete user
+// @route   DELETE /api/admin/users/:id
+// @access  Private (Admin only)
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (req.user._id.toString() === id) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot delete your own account'
+      });
+    }
+
+    const user = await User.findByIdAndDelete(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete user',
+      error: error.message
+    });
   }
 };
 
@@ -199,5 +231,6 @@ module.exports = {
   getUsers,
   createUser,
   updateUser,
-  toggleUserStatus
+  toggleUserStatus,
+  deleteUser
 };

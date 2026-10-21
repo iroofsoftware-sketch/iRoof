@@ -8,55 +8,45 @@ import {
   Input,
   Select,
   DatePicker,
-  Tag,
   Space,
-  Typography,
-  Card,
-  Popconfirm,
+  Avatar,
   message,
+  Dropdown,
   Row,
-  Col,
-  Descriptions,
-  Divider,
-  Dropdown
+  Col
 } from 'antd';
 import {
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  ReloadOutlined,
-  CalculatorOutlined,
   SearchOutlined,
-  PhoneOutlined,
-  MailOutlined,
-  EnvironmentOutlined,
   EyeOutlined,
+  CalculatorOutlined,
+  EditOutlined,
+  CloseOutlined,
   DownOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import { useAuthStore } from '../../store/authStore';
 
-const { Title, Text, Paragraph } = Typography;
+const { RangePicker } = DatePicker;
 const { Option } = Select;
 const { TextArea } = Input;
 
-export const STATUS_CONFIG = {
-  new: { label: 'New Enquiry', color: 'blue' },
-  visited: { label: 'Site Visited', color: 'orange' },
-  estimated: { label: 'Estimated', color: 'purple' },
-  approved: { label: 'Approved', color: 'green' },
-  rejected: { label: 'Rejected', color: 'red' },
-  completed: { label: 'Completed', color: 'cyan' }
-};
+const STATUSES = [
+  { key: 'new', label: 'New' },
+  { key: 'visited', label: 'Visited' },
+  { key: 'estimated', label: 'Estimated' },
+  { key: 'approved', label: 'Approved' },
+  { key: 'rejected', label: 'Rejected' },
+  { key: 'completed', label: 'Completed' }
+];
 
-export const ROOF_TYPES = [
-  'Model 1: Normal Cantilever',
-  'Model 2: Auditorium',
-  'Model 3: PEB Cantilever',
-  'Model 4: Type 2 Cantilever',
-  'Model 5: Simply Supported',
+const ROOF_TYPES = [
+  'Normal Cantilever',
+  'Auditorium',
+  'PEB Cantilever',
+  'Type 2 Cantilever',
+  'Simply Supported',
   'Custom Roof Structure'
 ];
 
@@ -64,15 +54,17 @@ const EnquiriesPage = () => {
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [editingEnquiry, setEditingEnquiry] = useState(null);
+
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState(null);
 
   const [form] = Form.useForm();
   const navigate = useNavigate();
-  const { role } = useAuthStore();
 
   const fetchEnquiries = useCallback(async () => {
     setLoading(true);
@@ -81,9 +73,9 @@ const EnquiriesPage = () => {
       if (response.data && response.data.enquiries) {
         setEnquiries(response.data.enquiries);
       }
-    } catch (error) {
-      console.error('Error fetching enquiries:', error);
-      message.error(error.response?.data?.message || 'Failed to load enquiries');
+    } catch (err) {
+      console.error('Error fetching enquiries:', err);
+      message.error(err.response?.data?.message || 'Failed to load enquiries');
     } finally {
       setLoading(false);
     }
@@ -97,7 +89,7 @@ const EnquiriesPage = () => {
     setEditingEnquiry(null);
     form.resetFields();
     form.setFieldsValue({
-      roofType: ROOF_TYPES[0],
+      roofType: 'Normal Cantilever',
       status: 'new',
       enquiryDate: dayjs()
     });
@@ -112,20 +104,20 @@ const EnquiriesPage = () => {
       phone: record.phone,
       email: record.email,
       address: record.address,
-      roofType: record.roofType,
-      status: record.status,
+      roofType: record.roofType || 'Normal Cantilever',
+      status: record.status || 'new',
       enquiryDate: record.enquiryDate ? dayjs(record.enquiryDate) : dayjs(),
       notes: record.notes
     });
     setModalVisible(true);
   };
 
-  const handleOpenDetail = (record) => {
+  const handleOpenDrawer = (record) => {
     setSelectedEnquiry(record);
-    setDetailDrawerVisible(true);
+    setDrawerVisible(true);
   };
 
-  const handleModalSubmit = async (values) => {
+  const handleFormSubmit = async (values) => {
     try {
       const payload = {
         clientName: values.clientName,
@@ -140,325 +132,439 @@ const EnquiriesPage = () => {
 
       if (editingEnquiry) {
         await api.put(`/enquiries/${editingEnquiry._id}`, payload);
-        message.success('Enquiry updated successfully');
+        message.success('Enquiry updated');
       } else {
         await api.post('/enquiries', payload);
-        message.success('New enquiry registered');
+        message.success('New enquiry created');
       }
 
       setModalVisible(false);
-      form.resetFields();
       fetchEnquiries();
-    } catch (error) {
-      console.error('Save enquiry error:', error);
-      message.error(error.response?.data?.message || 'Failed to save enquiry');
+    } catch (err) {
+      console.error('Save enquiry error:', err);
+      message.error(err.response?.data?.message || 'Failed to save enquiry');
     }
   };
 
   const handleStatusChange = async (enquiryId, newStatus) => {
     try {
       await api.patch(`/enquiries/${enquiryId}/status`, { status: newStatus });
-      message.success(`Status updated to ${STATUS_CONFIG[newStatus]?.label || newStatus}`);
+      message.success(`Status updated to ${newStatus}`);
       setEnquiries((prev) =>
         prev.map((e) => (e._id === enquiryId ? { ...e, status: newStatus } : e))
       );
       if (selectedEnquiry && selectedEnquiry._id === enquiryId) {
         setSelectedEnquiry((prev) => ({ ...prev, status: newStatus }));
       }
-    } catch (error) {
-      console.error('Change status error:', error);
-      message.error(error.response?.data?.message || 'Failed to update status');
+    } catch (err) {
+      console.error('Status change error:', err);
+      message.error('Failed to change status');
     }
   };
 
-  const handleDeleteEnquiry = async (id) => {
-    try {
-      await api.delete(`/enquiries/${id}`);
-      message.success('Enquiry deleted');
-      setEnquiries((prev) => prev.filter((e) => e._id !== id));
-      if (selectedEnquiry && selectedEnquiry._id === id) {
-        setDetailDrawerVisible(false);
-      }
-    } catch (error) {
-      console.error('Delete enquiry error:', error);
-      message.error(error.response?.data?.message || 'Failed to delete enquiry');
-    }
+  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || dateRange !== null;
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setDateRange(null);
   };
 
   const filteredEnquiries = enquiries.filter((e) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
-      (e.clientName && e.clientName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (e.phone && e.phone.includes(searchQuery)) ||
-      (e.email && e.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (e.address && e.address.toLowerCase().includes(searchQuery.toLowerCase()));
+      !q ||
+      (e.clientName && e.clientName.toLowerCase().includes(q)) ||
+      (e._id && e._id.toLowerCase().includes(q)) ||
+      (e.address && e.address.toLowerCase().includes(q)) ||
+      (e.phone && e.phone.includes(q));
+
     const matchesStatus = statusFilter === 'all' || e.status === statusFilter;
-    return matchesSearch && matchesStatus;
+
+    let matchesDate = true;
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      const enqDate = dayjs(e.enquiryDate || e.createdAt);
+      matchesDate =
+        enqDate.isAfter(dateRange[0].startOf('day')) &&
+        enqDate.isBefore(dateRange[1].endOf('day'));
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const columns = [
     {
-      title: 'Client Details',
-      key: 'client',
-      render: (_, record) => (
-        <div>
-          <div
-            style={{ fontWeight: 600, color: '#1e293b', cursor: 'pointer' }}
-            onClick={() => handleOpenDetail(record)}
-          >
-            {record.clientName}
-          </div>
-          <Space orientation="horizontal" size={12} style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-            <span>
-              <PhoneOutlined /> {record.phone}
-            </span>
-            {record.email && (
-              <span>
-                <MailOutlined /> {record.email}
-              </span>
-            )}
-          </Space>
-          {record.address && (
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-              <EnvironmentOutlined /> {record.address}
-            </div>
-          )}
-        </div>
+      title: 'REF #',
+      dataIndex: '_id',
+      key: 'ref',
+      width: 100,
+      render: (id) => (
+        <span style={{ fontFamily: 'monospace', fontWeight: 500, color: '#0b315d', fontSize: 12 }}>
+          #{id.slice(-6).toUpperCase()}
+        </span>
       )
     },
     {
-      title: 'Roof Model / Type',
-      dataIndex: 'roofType',
-      key: 'roofType',
-      render: (roofType) => (
-        <Tag color="geekblue" style={{ borderRadius: 6, fontWeight: 500 }}>
-          {roofType || 'Standard'}
-        </Tag>
-      )
+      title: 'CUSTOMER',
+      dataIndex: 'clientName',
+      key: 'customer',
+      render: (name) => <span style={{ fontWeight: 500, color: '#111827' }}>{name}</span>
     },
     {
-      title: 'Enquiry Date',
-      dataIndex: 'enquiryDate',
-      key: 'enquiryDate',
-      render: (val) =>
-        val
-          ? new Date(val).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric'
-            })
-          : '—'
+      title: 'LOCATION',
+      dataIndex: 'address',
+      key: 'location',
+      render: (loc) => <span style={{ color: '#6b7280' }}>{loc || '—'}</span>
     },
     {
-      title: 'Status',
+      title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
-      render: (status, record) => {
-        const config = STATUS_CONFIG[status] || { label: status, color: 'default' };
-        const menuItems = Object.keys(STATUS_CONFIG).map((key) => ({
-          key,
-          label: (
-            <Tag color={STATUS_CONFIG[key].color} style={{ margin: 0 }}>
-              {STATUS_CONFIG[key].label}
-            </Tag>
-          ),
-          onClick: () => handleStatusChange(record._id, key)
-        }));
-
+      render: (st) => (
+        <span className={`status-dot status-${st || 'new'}`}>
+          <span style={{ textTransform: 'capitalize' }}>{st || 'new'}</span>
+        </span>
+      )
+    },
+    {
+      title: 'DATE',
+      dataIndex: 'enquiryDate',
+      key: 'date',
+      render: (d) => (
+        <span style={{ color: '#6b7280', fontSize: 12 }}>
+          {d ? new Date(d).toLocaleDateString('en-IN') : '—'}
+        </span>
+      )
+    },
+    {
+      title: 'ASSIGNED TO',
+      key: 'assigned',
+      render: (_, r) => {
+        const staffName = r.assignedTo?.name || r.createdBy?.name || 'Sales Staff';
+        const initial = staffName.charAt(0).toUpperCase();
         return (
-          <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-            <Button
-              size="small"
-              style={{
-                borderRadius: 12,
-                fontSize: 12,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4
-              }}
-            >
-              <Tag color={config.color} style={{ margin: 0, border: 'none', background: 'transparent' }}>
-                ● {config.label}
-              </Tag>
-              <DownOutlined style={{ fontSize: 10, color: '#94a3b8' }} />
-            </Button>
-          </Dropdown>
+          <Space size={6}>
+            <Avatar size={22} style={{ background: '#dde3ea', color: '#374151', fontSize: 11 }}>
+              {initial}
+            </Avatar>
+            <span style={{ fontSize: 12, color: '#374151' }}>{staffName}</span>
+          </Space>
         );
       }
     },
     {
-      title: 'Actions',
+      title: 'ACTIONS',
       key: 'actions',
       align: 'right',
       render: (_, record) => (
-        <Space>
-          <Button
-            type="primary"
-            size="small"
-            icon={<CalculatorOutlined />}
-            onClick={() => navigate(`/sales/estimates/new?enquiryId=${record._id}`)}
-            style={{
-              background: '#059669',
-              borderColor: '#059669',
-              fontSize: 12
-            }}
-          >
-            Estimate
-          </Button>
-          <Button
-            type="text"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleOpenDetail(record)}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleOpenEditModal(record)}
-          />
-          {['admin', 'sales'].includes(role) && (
-            <Popconfirm
-              title="Delete Enquiry"
-              description={`Delete enquiry for "${record.clientName}"?`}
-              onConfirm={() => handleDeleteEnquiry(record._id)}
-              okText="Yes"
-              cancelText="No"
-            >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
-            </Popconfirm>
-          )}
-        </Space>
+        <Button
+          type="text"
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenDrawer(record);
+          }}
+          style={{ color: '#0b315d', fontWeight: 500 }}
+        >
+          View
+        </Button>
       )
     }
   ];
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-          flexWrap: 'wrap',
-          gap: 16
-        }}
-      >
+      {/* HEADER ROW */}
+      <div className="page-header">
         <div>
-          <Title level={2} style={{ margin: 0 }}>Enquiry Management</Title>
-          <Text type="secondary">
-            Capture, track, and convert client roofing inquiries into engineering estimations.
-          </Text>
+          <div className="page-title">Enquiries</div>
+          <div className="page-subtitle">Manage client leads and site visits</div>
         </div>
-
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchEnquiries} loading={loading}>
-            Refresh
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleOpenCreateModal}
-            style={{
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              borderColor: '#2563eb'
-            }}
-          >
-            New Enquiry
-          </Button>
-        </Space>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleOpenCreateModal}
+          style={{ background: '#0b315d', borderColor: '#0b315d' }}
+        >
+          New Enquiry
+        </Button>
       </div>
 
-      <Card
-        bordered={false}
+      {/* FILTER BAR */}
+      <div
         style={{
-          borderRadius: 12,
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)'
+          background: '#ffffff',
+          border: '1px solid #dde3ea',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          gap: 12,
+          flexWrap: 'wrap',
+          alignItems: 'center'
         }}
       >
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={24} md={12} lg={8}>
-            <Input
-              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-              placeholder="Search by client name, phone, address..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              allowClear
-            />
-          </Col>
-          <Col xs={24} md={12} lg={6}>
-            <Select
-              value={statusFilter}
-              onChange={(val) => setStatusFilter(val)}
-              style={{ width: '100%' }}
-            >
-              <Option value="all">All Statuses ({enquiries.length})</Option>
-              {Object.keys(STATUS_CONFIG).map((key) => (
-                <Option key={key} value={key}>
-                  {STATUS_CONFIG[key].label}
-                </Option>
-              ))}
-            </Select>
-          </Col>
-        </Row>
+        <Input
+          prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+          placeholder="Search by name, ref, location..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ width: 260, height: 36, borderRadius: 8 }}
+          allowClear
+        />
 
+        <Select
+          value={statusFilter}
+          onChange={(val) => setStatusFilter(val)}
+          style={{ width: 150, height: 36 }}
+          placeholder="All statuses"
+        >
+          <Option value="all">All statuses</Option>
+          {STATUSES.map((s) => (
+            <Option key={s.key} value={s.key}>
+              {s.label}
+            </Option>
+          ))}
+        </Select>
+
+        <RangePicker
+          value={dateRange}
+          onChange={(dates) => setDateRange(dates)}
+          format="DD/MM/YYYY"
+          style={{ height: 36, borderRadius: 8 }}
+        />
+
+        {hasActiveFilters && (
+          <Button type="link" onClick={clearFilters} style={{ color: '#6b7280', fontSize: 13, padding: 0 }}>
+            Clear filters
+          </Button>
+        )}
+      </div>
+
+      {/* TABLE */}
+      <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
         <Table
           columns={columns}
           dataSource={filteredEnquiries}
           rowKey="_id"
           loading={loading}
           pagination={{ pageSize: 10, showSizeChanger: true }}
-          locale={{ emptyText: 'No enquiries registered yet' }}
+          onRow={(record) => ({
+            onClick: () => handleOpenDrawer(record),
+            style: { cursor: 'pointer' }
+          })}
         />
-      </Card>
+      </div>
 
-      {/* Create / Edit Enquiry Modal */}
+      {/* DETAIL DRAWER */}
+      <Drawer
+        title={null}
+        placement="right"
+        width={520}
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        destroyOnClose
+        styles={{
+          body: { padding: '24px 24px 90px 24px', background: '#ffffff' }
+        }}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 0' }}>
+            <Button onClick={() => setDrawerVisible(false)}>Close</Button>
+            {selectedEnquiry && (
+              <>
+                <Button
+                  onClick={() => {
+                    setDrawerVisible(false);
+                    handleOpenEditModal(selectedEnquiry);
+                  }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<CalculatorOutlined />}
+                  onClick={() => {
+                    setDrawerVisible(false);
+                    navigate(`/sales/estimates/new?enquiryId=${selectedEnquiry._id}`);
+                  }}
+                  style={{ background: '#0b315d', borderColor: '#0b315d' }}
+                >
+                  Create Estimate
+                </Button>
+              </>
+            )}
+          </div>
+        }
+      >
+        {selectedEnquiry && (
+          <div>
+            {/* Header info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span
+                style={{
+                  background: '#0b315d',
+                  color: '#ffffff',
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  fontWeight: 600
+                }}
+              >
+                #{selectedEnquiry._id.slice(-6).toUpperCase()}
+              </span>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>
+                {selectedEnquiry.clientName}
+              </h2>
+            </div>
+
+            {/* Status row */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 0',
+                borderBottom: '1px solid #dde3ea',
+                marginBottom: 20
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className={`status-dot status-${selectedEnquiry.status || 'new'}`}>
+                  <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
+                    {selectedEnquiry.status || 'new'}
+                  </span>
+                </span>
+              </div>
+
+              <Dropdown
+                menu={{
+                  items: STATUSES.map((s) => ({
+                    key: s.key,
+                    label: s.label,
+                    onClick: () => handleStatusChange(selectedEnquiry._id, s.key)
+                  }))
+                }}
+              >
+                <Button size="small" style={{ fontSize: 12 }}>
+                  Change Status <DownOutlined style={{ fontSize: 10 }} />
+                </Button>
+              </Dropdown>
+            </div>
+
+            {/* Section 1: Customer Info */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', borderBottom: '1px solid #dde3ea', paddingBottom: 6, marginBottom: 12 }}>
+                Customer Info
+              </div>
+              <Row gutter={[12, 10]}>
+                <Col span={12}>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Contact Name</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEnquiry.clientName}</div>
+                </Col>
+                <Col span={12}>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Phone</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEnquiry.phone}</div>
+                </Col>
+                <Col span={12}>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Email</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEnquiry.email || '—'}</div>
+                </Col>
+                <Col span={12}>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Enquiry Date</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>
+                    {selectedEnquiry.enquiryDate ? new Date(selectedEnquiry.enquiryDate).toLocaleDateString('en-IN') : '—'}
+                  </div>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Section 2: Site Details */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', borderBottom: '1px solid #dde3ea', paddingBottom: 6, marginBottom: 12 }}>
+                Site Details
+              </div>
+              <Row gutter={[12, 10]}>
+                <Col span={24}>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Site Address</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEnquiry.address || '—'}</div>
+                </Col>
+                <Col span={12}>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Roof Engineering Model</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#0b315d' }}>{selectedEnquiry.roofType || 'Standard'}</div>
+                </Col>
+                <Col span={12}>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Assigned Representative</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>
+                    {selectedEnquiry.assignedTo?.name || selectedEnquiry.createdBy?.name || 'Sales Staff'}
+                  </div>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Section 3: Notes */}
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', borderBottom: '1px solid #dde3ea', paddingBottom: 6, marginBottom: 12 }}>
+                Notes & Field Requirements
+              </div>
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #dde3ea',
+                  borderRadius: 6,
+                  padding: 12,
+                  fontSize: 13,
+                  color: '#374151',
+                  whiteSpace: 'pre-wrap',
+                  minHeight: 70
+                }}
+              >
+                {selectedEnquiry.notes || 'No preliminary notes recorded for this enquiry.'}
+              </div>
+            </div>
+          </div>
+        )}
+      </Drawer>
+
+      {/* CREATE / EDIT MODAL */}
       <Modal
-        title={editingEnquiry ? `Edit Enquiry: ${editingEnquiry.clientName}` : 'Register New Client Enquiry'}
+        title={editingEnquiry ? 'Edit Enquiry' : 'New Enquiry'}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
         destroyOnClose
-        width={600}
+        width={540}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleModalSubmit}
-          style={{ marginTop: 16 }}
-        >
+        <Form form={form} layout="vertical" onFinish={handleFormSubmit} style={{ marginTop: 16 }}>
           <Row gutter={16}>
             <Col span={14}>
               <Form.Item
                 name="clientName"
-                label="Client / Company Name"
-                rules={[{ required: true, message: 'Please enter client name' }]}
+                label="Customer Name"
+                rules={[{ required: true, message: 'Please enter customer name' }]}
               >
-                <Input placeholder="e.g. Acme Corporation" />
+                <Input placeholder="e.g. Acme Industrial Corp" />
               </Form.Item>
             </Col>
             <Col span={10}>
               <Form.Item
                 name="phone"
-                label="Contact Phone"
-                rules={[{ required: true, message: 'Please enter phone number' }]}
+                label="Phone Number"
+                rules={[{ required: true, message: 'Please enter phone' }]}
               >
-                <Input placeholder="e.g. +91 9876543210" />
+                <Input placeholder="+91 9876543210" />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="email"
-                label="Email Address (Optional)"
-                rules={[{ type: 'email', message: 'Enter a valid email' }]}
-              >
-                <Input placeholder="client@example.com" />
+            <Col span={14}>
+              <Form.Item name="email" label="Email Address">
+                <Input placeholder="contact@example.com" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={10}>
               <Form.Item name="enquiryDate" label="Enquiry Date">
                 <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
               </Form.Item>
@@ -466,17 +572,13 @@ const EnquiriesPage = () => {
           </Row>
 
           <Form.Item name="address" label="Site Address / Location">
-            <Input placeholder="e.g. Plot 42, Industrial Area Phase II, Ernakulam" />
+            <Input placeholder="Plot or street, City" />
           </Form.Item>
 
           <Row gutter={16}>
             <Col span={14}>
-              <Form.Item
-                name="roofType"
-                label="Roof Engineering Model"
-                rules={[{ required: true, message: 'Select roof model' }]}
-              >
-                <Select placeholder="Select structural model">
+              <Form.Item name="roofType" label="Roof Model">
+                <Select>
                   {ROOF_TYPES.map((t) => (
                     <Option key={t} value={t}>
                       {t}
@@ -486,11 +588,11 @@ const EnquiriesPage = () => {
               </Form.Item>
             </Col>
             <Col span={10}>
-              <Form.Item name="status" label="Enquiry Status">
-                <Select placeholder="Status">
-                  {Object.keys(STATUS_CONFIG).map((key) => (
-                    <Option key={key} value={key}>
-                      {STATUS_CONFIG[key].label}
+              <Form.Item name="status" label="Initial Status">
+                <Select>
+                  {STATUSES.map((s) => (
+                    <Option key={s.key} value={s.key}>
+                      {s.label}
                     </Option>
                   ))}
                 </Select>
@@ -498,116 +600,18 @@ const EnquiriesPage = () => {
             </Col>
           </Row>
 
-          <Form.Item name="notes" label="Site Visit & Engineering Notes">
-            <TextArea rows={3} placeholder="Span dimensions, height constraints, client preferences..." />
+          <Form.Item name="notes" label="Field Notes">
+            <TextArea rows={3} placeholder="Span dimensions, height, site constraints..." />
           </Form.Item>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
             <Button onClick={() => setModalVisible(false)}>Cancel</Button>
-            <Button type="primary" htmlType="submit">
-              {editingEnquiry ? 'Update Enquiry' : 'Register Enquiry'}
+            <Button type="primary" htmlType="submit" style={{ background: '#0b315d', borderColor: '#0b315d' }}>
+              {editingEnquiry ? 'Save Changes' : 'Create Enquiry'}
             </Button>
           </div>
         </Form>
       </Modal>
-
-      {/* Enquiry Detail Drawer */}
-      <Drawer
-        title="Enquiry Summary"
-        placement="right"
-        width={480}
-        onClose={() => setDetailDrawerVisible(false)}
-        open={detailDrawerVisible}
-        extra={
-          selectedEnquiry && (
-            <Button
-              type="primary"
-              icon={<CalculatorOutlined />}
-              onClick={() => {
-                setDetailDrawerVisible(false);
-                navigate(`/sales/estimates/new?enquiryId=${selectedEnquiry._id}`);
-              }}
-              style={{ background: '#059669', borderColor: '#059669' }}
-            >
-              Start Estimate
-            </Button>
-          )
-        }
-      >
-        {selectedEnquiry && (
-          <div>
-            <div style={{ marginBottom: 20 }}>
-              <Title level={4} style={{ margin: 0 }}>{selectedEnquiry.clientName}</Title>
-              <Space style={{ marginTop: 6 }}>
-                <Tag color={STATUS_CONFIG[selectedEnquiry.status]?.color || 'blue'}>
-                  {STATUS_CONFIG[selectedEnquiry.status]?.label || selectedEnquiry.status}
-                </Tag>
-                <Tag color="geekblue">{selectedEnquiry.roofType}</Tag>
-              </Space>
-            </div>
-
-            <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label="Contact Phone">
-                <a href={`tel:${selectedEnquiry.phone}`}>{selectedEnquiry.phone}</a>
-              </Descriptions.Item>
-              <Descriptions.Item label="Email">
-                {selectedEnquiry.email ? (
-                  <a href={`mailto:${selectedEnquiry.email}`}>{selectedEnquiry.email}</a>
-                ) : (
-                  '—'
-                )}
-              </Descriptions.Item>
-              <Descriptions.Item label="Site Location">
-                {selectedEnquiry.address || '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Enquiry Date">
-                {selectedEnquiry.enquiryDate
-                  ? new Date(selectedEnquiry.enquiryDate).toLocaleDateString('en-IN', {
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric'
-                    })
-                  : '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Registered By">
-                {selectedEnquiry.createdBy?.name || 'Sales Staff'}
-              </Descriptions.Item>
-            </Descriptions>
-
-            <Divider style={{ margin: '16px 0' }} />
-
-            <div style={{ marginBottom: 16 }}>
-              <Text strong style={{ display: 'block', marginBottom: 6 }}>
-                Engineering & Site Notes:
-              </Text>
-              <Paragraph
-                style={{
-                  background: '#f8fafc',
-                  padding: 12,
-                  borderRadius: 8,
-                  border: '1px solid #e2e8f0',
-                  color: '#475569'
-                }}
-              >
-                {selectedEnquiry.notes || 'No preliminary notes recorded.'}
-              </Paragraph>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12 }}>
-              <Button
-                block
-                icon={<EditOutlined />}
-                onClick={() => {
-                  setDetailDrawerVisible(false);
-                  handleOpenEditModal(selectedEnquiry);
-                }}
-              >
-                Edit Enquiry
-              </Button>
-            </div>
-          </div>
-        )}
-      </Drawer>
     </div>
   );
 };

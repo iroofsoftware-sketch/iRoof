@@ -1,22 +1,31 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Typography, Alert, message, Tag } from 'antd';
-import { MailOutlined, LockOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Alert, message } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 
-const { Title, Text, Paragraph } = Typography;
-
 export const roleHomePaths = {
-  admin: '/admin/users',
-  sales: '/sales/enquiries',
-  accounts: '/accounts/dashboard',
-  design: '/design/dashboard',
-  projectmanager: '/projectmanager/dashboard',
-  purchase: '/purchase/dashboard',
-  workshop: '/workshop/dashboard',
-  sitevisitor: '/sitevisitor/dashboard'
+  admin: '/admin',
+  sales: '/sales',
+  accounts: '/accounts',
+  design: '/design',
+  projectmanager: '/projectmanager',
+  purchase: '/purchase',
+  workshop: '/workshop',
+  sitevisitor: '/sitevisitor'
 };
+
+const ROLES_LIST = [
+  'Admin',
+  'Sales',
+  'Accounts',
+  'Design',
+  'Project Manager',
+  'Purchase',
+  'Workshop',
+  'Site Visitor'
+];
 
 const LoginPage = () => {
   const [loading, setLoading] = useState(false);
@@ -37,10 +46,8 @@ const LoginPage = () => {
       if (response.data && response.data.token) {
         const { user, token } = response.data;
         login(user, token);
-
-        message.success(`Welcome back, ${user.name}!`);
-
-        const destination = roleHomePaths[user.role] || '/';
+        message.success(`Signed in as ${user.name}`);
+        const destination = roleHomePaths[user.role] || `/${user.role}`;
         navigate(destination, { replace: true });
       } else {
         setErrorMessage('Unexpected response from server');
@@ -57,142 +64,266 @@ const LoginPage = () => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
-      padding: '24px'
-    }}>
-      <Card
+    <div style={{ minHeight: '100vh', display: 'flex', width: '100%' }}>
+      {/* ── LEFT COLUMN (Enterprise Navy Branding) ── */}
+      <div
         style={{
-          width: '100%',
-          maxWidth: 440,
-          borderRadius: 16,
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          background: 'rgba(30, 41, 59, 0.85)',
-          backdropFilter: 'blur(16px)'
+          width: 420,
+          minWidth: 420,
+          background: '#0b315d',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          color: '#ffffff'
         }}
-        bodyStyle={{ padding: '36px 32px' }}
+        className="login-left-col"
       >
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{
-            display: 'inline-flex',
+        {/* TOP: Brand */}
+        <div style={{ padding: '40px 40px 0 40px' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.2 }}>
+            <span style={{ color: '#c9940a' }}>I </span>
+            <span style={{ color: '#ffffff' }}>Roofing</span>
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginTop: 2 }}>
+            Enterprises
+          </div>
+          <div
+            style={{
+              width: 48,
+              height: 1,
+              background: 'rgba(255, 255, 255, 0.12)',
+              margin: '16px 0 12px 0'
+            }}
+          />
+          <div
+            style={{
+              fontSize: 12,
+              opacity: 0.5,
+              letterSpacing: '0.05em',
+              textTransform: 'uppercase'
+            }}
+          >
+            Enterprise Management System
+          </div>
+        </div>
+
+        {/* MIDDLE: Architectural Line Drawing SVG */}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+          <svg
+            width="200"
+            height="140"
+            viewBox="0 0 200 140"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ opacity: 0.14 }}
+          >
+            {/* Curved Roof Arch */}
+            <path
+              d="M 20 50 Q 100 15 180 50"
+              stroke="#ffffff"
+              strokeWidth="1.5"
+              fill="none"
+            />
+            {/* Bottom Tie Chord / Truss */}
+            <line x1="20" y1="50" x2="180" y2="50" stroke="#ffffff" strokeWidth="1" />
+            {/* Columns */}
+            <line x1="35" y1="50" x2="35" y2="130" stroke="#ffffff" strokeWidth="1.5" />
+            <line x1="165" y1="50" x2="165" y2="130" stroke="#ffffff" strokeWidth="1.5" />
+            {/* Foundation Plates */}
+            <line x1="25" y1="130" x2="45" y2="130" stroke="#ffffff" strokeWidth="2" />
+            <line x1="155" y1="130" x2="175" y2="130" stroke="#ffffff" strokeWidth="2" />
+            {/* Internal Web Truss Lines */}
+            <line x1="60" y1="50" x2="60" y2="35" stroke="#ffffff" strokeWidth="0.8" />
+            <line x1="100" y1="50" x2="100" y2="28" stroke="#ffffff" strokeWidth="0.8" />
+            <line x1="140" y1="50" x2="140" y2="35" stroke="#ffffff" strokeWidth="0.8" />
+          </svg>
+        </div>
+
+        {/* BOTTOM: Footer */}
+        <div style={{ padding: '0 40px 32px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, opacity: 0.4 }}>Powered by Auxzon Solutions</span>
+          <span
+            style={{
+              fontSize: 10,
+              background: 'rgba(255, 255, 255, 0.08)',
+              color: '#ffffff',
+              borderRadius: 4,
+              padding: '2px 8px',
+              fontWeight: 500
+            }}
+          >
+            v2.0
+          </span>
+        </div>
+      </div>
+
+      {/* ── RIGHT COLUMN (Clean Enterprise Light Form) ── */}
+      <div
+        style={{
+          flex: 1,
+          background: '#f3f6f9',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '24px'
+        }}
+      >
+        {/* Mobile Navy Header */}
+        <div
+          className="login-mobile-header"
+          style={{
+            display: 'none',
+            width: '100%',
+            height: 56,
+            background: '#0b315d',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 56,
-            height: 56,
-            borderRadius: 14,
-            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-            color: '#fff',
-            fontSize: 28,
-            marginBottom: 12,
-            boxShadow: '0 8px 16px rgba(37, 99, 235, 0.35)'
-          }}>
-            <SafetyCertificateOutlined />
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            zIndex: 10
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 700 }}>
+            <span style={{ color: '#c9940a' }}>I </span>
+            <span style={{ color: '#ffffff' }}>Roofing Enterprises</span>
           </div>
-          <Title level={2} style={{ color: '#f8fafc', margin: 0, fontWeight: 700 }}>
-            iRoof <span style={{ color: '#38bdf8' }}>v2</span>
-          </Title>
-          <Text style={{ color: '#94a3b8', fontSize: 13, display: 'block', marginTop: 4 }}>
-            I Roofing Enterprises Management System
-          </Text>
-          <Paragraph style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
-            Built by Auxzon Solutions Pvt. Ltd.
-          </Paragraph>
         </div>
 
-        {errorMessage && (
-          <Alert
-            message={errorMessage}
-            type="error"
-            showIcon
-            closable
-            onClose={() => setErrorMessage(null)}
-            style={{ marginBottom: 20, borderRadius: 8 }}
-          />
-        )}
+        <div style={{ width: '100%', maxWidth: 380, margin: 'auto' }}>
+          {/* Header */}
+          <div style={{ marginBottom: 32 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 600, color: '#111827', letterSpacing: '-0.01em', margin: 0 }}>
+              Sign in to iRoof
+            </h1>
+            <p style={{ fontSize: 14, color: '#6b7280', marginTop: 6, margin: 0 }}>
+              Enter your credentials to access your workspace.
+            </p>
+          </div>
 
-        <Form
-          name="loginForm"
-          layout="vertical"
-          onFinish={onFinish}
-          autoComplete="off"
-          size="large"
-        >
-          <Form.Item
-            label={<span style={{ color: '#e2e8f0', fontWeight: 500 }}>Email Address</span>}
-            name="email"
-            rules={[
-              { required: true, message: 'Please enter your email' },
-              { type: 'email', message: 'Please enter a valid email' }
-            ]}
-          >
-            <Input
-              prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-              placeholder="e.g. admin@iroof.com"
-              style={{
-                borderRadius: 8,
-                background: 'rgba(15, 23, 42, 0.6)',
-                borderColor: '#334155',
-                color: '#f8fafc'
-              }}
+          {errorMessage && (
+            <Alert
+              message={errorMessage}
+              type="error"
+              showIcon
+              closable
+              onClose={() => setErrorMessage(null)}
+              style={{ marginBottom: 20, borderRadius: 8 }}
             />
-          </Form.Item>
+          )}
 
-          <Form.Item
-            label={<span style={{ color: '#e2e8f0', fontWeight: 500 }}>Password</span>}
-            name="password"
-            rules={[{ required: true, message: 'Please enter your password' }]}
+          {/* Form */}
+          <Form
+            name="enterpriseLogin"
+            layout="vertical"
+            onFinish={onFinish}
+            autoComplete="off"
+            requiredMark={false}
           >
-            <Input.Password
-              prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
-              placeholder="Enter your password"
-              style={{
-                borderRadius: 8,
-                background: 'rgba(15, 23, 42, 0.6)',
-                borderColor: '#334155',
-                color: '#f8fafc'
-              }}
-            />
-          </Form.Item>
+            <Form.Item
+              name="email"
+              rules={[
+                { required: true, message: 'Please enter your username or email' }
+              ]}
+              style={{ marginBottom: 16 }}
+            >
+              <Input
+                prefix={<UserOutlined style={{ color: '#9ca3af', marginRight: 4 }} />}
+                placeholder="Username or email"
+                style={{ height: 42, borderRadius: 8, borderColor: '#dde3ea', fontSize: 14 }}
+              />
+            </Form.Item>
 
-          <Form.Item style={{ marginTop: 24, marginBottom: 12 }}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              block
+            <Form.Item
+              name="password"
+              rules={[{ required: true, message: 'Please enter your password' }]}
+              style={{ marginBottom: 20 }}
+            >
+              <Input.Password
+                prefix={<LockOutlined style={{ color: '#9ca3af', marginRight: 4 }} />}
+                placeholder="Password"
+                style={{ height: 42, borderRadius: 8, borderColor: '#dde3ea', fontSize: 14 }}
+              />
+            </Form.Item>
+
+            <Form.Item style={{ marginBottom: 0 }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+                block
+                style={{
+                  height: 42,
+                  background: '#0b315d',
+                  borderColor: '#0b315d',
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  boxShadow: 'none'
+                }}
+              >
+                Sign in
+              </Button>
+            </Form.Item>
+          </Form>
+
+          {/* Roles section */}
+          <div style={{ marginTop: 28 }}>
+            <div
               style={{
-                height: 46,
-                borderRadius: 8,
-                fontWeight: 600,
-                fontSize: 15,
-                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                borderColor: '#2563eb',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)'
+                display: 'flex',
+                alignItems: 'center',
+                textAlign: 'center',
+                color: '#9ca3af',
+                fontSize: 11,
+                marginBottom: 12
               }}
             >
-              Sign In
-            </Button>
-          </Form.Item>
-        </Form>
+              <div style={{ flex: 1, height: 1, background: '#dde3ea' }} />
+              <span style={{ padding: '0 10px', color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Access levels
+              </span>
+              <div style={{ flex: 1, height: 1, background: '#dde3ea' }} />
+            </div>
 
-        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #334155', textAlign: 'center' }}>
-          <Text style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 6 }}>
-            Authorized System Access Only
-          </Text>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
-            {['Admin', 'Sales', 'Accounts', 'Design', 'PM', 'Purchase', 'Workshop'].map((r) => (
-              <Tag key={r} color="default" style={{ fontSize: 10, margin: 0, background: '#1e293b', borderColor: '#334155', color: '#94a3b8' }}>
-                {r}
-              </Tag>
-            ))}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+              {ROLES_LIST.map((r) => (
+                <span
+                  key={r}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #dde3ea',
+                    borderRadius: 4,
+                    padding: '3px 8px',
+                    fontSize: 11,
+                    color: '#6b7280',
+                    fontWeight: 500
+                  }}
+                >
+                  {r}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{ marginTop: 40, textAlign: 'center', fontSize: 11, color: '#9ca3af' }}>
+            © 2025 I Roofing Enterprises
           </div>
         </div>
-      </Card>
+      </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .login-left-col {
+            display: none !important;
+          }
+          .login-mobile-header {
+            display: flex !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
