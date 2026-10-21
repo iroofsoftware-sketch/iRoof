@@ -30,7 +30,9 @@ import {
   CloseCircleOutlined,
   ClockCircleOutlined,
   SafetyCertificateOutlined,
-  AuditOutlined
+  AuditOutlined,
+  PlusOutlined,
+  MessageOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -350,13 +352,42 @@ const WorkOrderDetailPage = () => {
     }
   };
 
-  const handleAttachmentsChange = async (newAttachments) => {
+  // ── ATTACHMENTS PERSISTENCE ──
+  const handleAttachmentsChange = async (updatedAttachments) => {
     try {
-      await api.patch(`/workorders/${id}`, { attachments: newAttachments });
-      setWorkOrder((prev) => ({ ...prev, attachments: newAttachments }));
-      message.success('Attachments updated');
-    } catch (e) {
-      message.error('Failed to update attachments');
+      setWorkOrder((prev) => ({ ...prev, attachments: updatedAttachments }));
+      await api.patch(`/workorders/${id}/attachments`, { attachments: updatedAttachments });
+      message.success('Project attachments updated successfully');
+    } catch (err) {
+      console.error('Failed to update attachments:', err);
+      message.error('Failed to save attachments to server');
+    }
+  };
+
+  // ── LOG MANUAL AUDIT NOTE ──
+  const [noteModal, setNoteModal] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [noteLoading, setNoteLoading] = useState(false);
+
+  const handleLogNote = async () => {
+    if (!noteText.trim()) {
+      message.warning('Please enter a note');
+      return;
+    }
+    try {
+      setNoteLoading(true);
+      const res = await api.post(`/workorders/${id}/log-note`, { note: noteText.trim() });
+      if (res && res.data) {
+        message.success('Note logged to audit trail');
+        setNoteText('');
+        setNoteModal(false);
+        fetchDetail();
+      }
+    } catch (err) {
+      console.error('Failed to log note:', err);
+      message.error('Failed to log note to audit trail');
+    } finally {
+      setNoteLoading(false);
     }
   };
 
@@ -893,8 +924,16 @@ const WorkOrderDetailPage = () => {
 
       {/* ── 7. CHAIN-OF-CUSTODY AUDIT TRAIL ── */}
       <div className="content-card no-print" style={{ marginBottom: 20 }}>
-        <div className="content-card__header">
+        <div className="content-card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span className="content-card__title">Chain of Custody Audit Trail</span>
+          <Button
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={() => setNoteModal(true)}
+            style={{ fontSize: 12, borderRadius: 4 }}
+          >
+            Log Operational Note / Call Record
+          </Button>
         </div>
         <div className="content-card__body">
           {(!workOrder.stageHistory || workOrder.stageHistory.length === 0) ? (
@@ -924,6 +963,30 @@ const WorkOrderDetailPage = () => {
           )}
         </div>
       </div>
+
+      {/* ── LOG OPERATIONAL NOTE MODAL ── */}
+      <Modal
+        title="Log Operational Note / Site Call Record"
+        open={noteModal}
+        onCancel={() => {
+          setNoteModal(false);
+          setNoteText('');
+        }}
+        onOk={handleLogNote}
+        confirmLoading={noteLoading}
+        okText="Log to Audit Trail"
+      >
+        <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+          Add official remarks, client communications, site clearance updates, or delay notices to the permanent chronological audit log.
+        </p>
+        <TextArea
+          rows={4}
+          placeholder="e.g. Spoke with client regarding site clearance on North bay; foundation concrete setting on schedule for Friday dispatch..."
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          style={{ borderRadius: 6, marginTop: 8 }}
+        />
+      </Modal>
 
       {/* ── MODALS ── */}
       {/* 1. Accounts Commercial Approval Modal */}

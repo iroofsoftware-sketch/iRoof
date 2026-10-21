@@ -15,7 +15,9 @@ const {
   workshopComplete,
   updateWorkOrder,
   deleteWorkOrder,
-  getWorkOrderStats
+  getWorkOrderStats,
+  logWorkOrderNote,
+  updateWorkOrderAttachments
 } = require('../controllers/workOrderController');
 
 router.use(protect);
@@ -60,6 +62,12 @@ router.post('/:id/workshop-start-fabrication', authorize('workshop', 'admin'), w
 
 // GATE 7: Workshop completes fabrication / Work Proceeds
 router.post('/:id/workshop-complete', authorize('workshop', 'projectmanager', 'admin'), workshopComplete);
+
+// Log operational note to audit timeline
+router.post('/:id/log-note', authorize(...ALL_OPS_ROLES), logWorkOrderNote);
+
+// Update attachments / documents
+router.patch('/:id/attachments', authorize(...ALL_OPS_ROLES), updateWorkOrderAttachments);
 
 // General update & delete
 router.patch('/:id', authorize('admin', 'projectmanager'), updateWorkOrder);

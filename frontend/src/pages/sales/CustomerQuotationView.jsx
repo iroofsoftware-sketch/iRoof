@@ -4,10 +4,12 @@ import {
   PrinterOutlined,
   ArrowLeftOutlined,
   DownloadOutlined,
-  CheckCircleOutlined
+  CheckCircleOutlined,
+  WhatsAppOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { shareQuotationViaWhatsApp } from '../../utils/whatsappShare';
 
 const formatINR = (val) => {
   if (val === undefined || val === null) return '₹0';
@@ -107,6 +109,29 @@ const CustomerQuotationView = () => {
         </Button>
 
         <div style={{ display: 'flex', gap: 10 }}>
+          <Button
+            onClick={() =>
+              shareQuotationViaWhatsApp({
+                phone: clientPhone,
+                clientName,
+                refCode: estRef,
+                roofModel: estimate.model,
+                span,
+                length,
+                grandTotal
+              })
+            }
+            icon={<WhatsAppOutlined />}
+            style={{
+              background: '#25D366',
+              borderColor: '#25D366',
+              color: '#ffffff',
+              fontWeight: 600
+            }}
+          >
+            Share via WhatsApp
+          </Button>
+
           <Button
             type="primary"
             icon={<PrinterOutlined />}

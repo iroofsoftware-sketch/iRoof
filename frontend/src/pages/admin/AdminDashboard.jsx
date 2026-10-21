@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Table, Button, Empty, Card } from 'antd';
+import { Row, Col, Table, Button, Empty, Card, message } from 'antd';
 import {
   TeamOutlined,
   FileTextOutlined,
@@ -8,9 +8,11 @@ import {
   PlusOutlined,
   ControlOutlined,
   ShopOutlined,
-  UsergroupAddOutlined
+  UsergroupAddOutlined,
+  DownloadOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
 import RevenueAreaChart from '../../components/charts/RevenueAreaChart';
@@ -27,6 +29,8 @@ const AdminDashboard = () => {
     estimatesCount: 0,
     workOrdersCount: 0
   });
+  const [workOrdersList, setWorkOrdersList] = useState([]);
+  const [pipelineTotal, setPipelineTotal] = useState(0);
   const [recentActivities, setRecentActivities] = useState([]);
   const [funnelData, setFunnelData] = useState([]);
   const [donutData, setDonutData] = useState([]);
@@ -64,6 +68,9 @@ const AdminDashboard = () => {
           estimatesCount: estimates.length,
           workOrdersCount: workOrders.length
         });
+        setWorkOrdersList(workOrders);
+        const totalVal = workOrders.reduce((sum, w) => sum + (Number(w.grandTotal) || 0), 0);
+        setPipelineTotal(totalVal);
 
         // Compute conversion funnel counts
         const visitedCount = enquiries.filter((e) => ['visited', 'estimated', 'approved', 'completed'].includes(e.status)).length;
@@ -122,6 +129,34 @@ const AdminDashboard = () => {
 
     fetchDashboardData();
   }, []);
+
+  const handleExportWorkOrdersCSV = () => {
+    if (!workOrdersList || workOrdersList.length === 0) {
+      message.info('No work orders available to export');
+      return;
+    }
+    const headers = ['Ref Code', 'Client Name', 'Status', 'Roof Model', 'Span (m)', 'Length (m)', 'Grand Total (INR)', 'Created Date'];
+    const rows = workOrdersList.map((w) => [
+      `"${w.refCode || ''}"`,
+      `"${(w.clientName || '').replace(/"/g, '""')}"`,
+      `"${w.status || ''}"`,
+      `"${w.roofModel || ''}"`,
+      w.span || '',
+      w.length || '',
+      w.grandTotal || 0,
+      `"${dayjs(w.createdAt).format('YYYY-MM-DD')}"`
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `iRoof_WorkOrders_${dayjs().format('YYYY-MM-DD')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    message.success('Work orders exported to CSV successfully');
+  };
 
   const columns = [
     {
@@ -207,6 +242,13 @@ const AdminDashboard = () => {
           >
             Rate Masters
           </Button>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={handleExportWorkOrdersCSV}
+            style={{ background: '#0b2e59', color: '#ffffff', borderColor: '#0b2e59', fontWeight: 600 }}
+          >
+            Export Work Orders (CSV)
+          </Button>
         </div>
       </div>
 
@@ -254,13 +296,17 @@ const AdminDashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Awarded Work Orders</span>
+              <span className="stat-card__label">Active Project Pipeline</span>
               <div className="stat-card__icon" style={{ background: '#ecfdf5', color: '#047857' }}>
                 <CheckCircleOutlined />
               </div>
             </div>
-            <div className="stat-card__value">{stats.workOrdersCount}</div>
-            <div className="stat-card__meta">Active & completed projects</div>
+            <div className="stat-card__value" style={{ fontSize: pipelineTotal > 0 ? 20 : 28 }}>
+              {pipelineTotal > 0 ? `₹ ${Math.round(pipelineTotal).toLocaleString('en-IN')}` : stats.workOrdersCount}
+            </div>
+            <div className="stat-card__meta">
+              {stats.workOrdersCount} Work Orders awarded
+            </div>
           </div>
         </Col>
       </Row>

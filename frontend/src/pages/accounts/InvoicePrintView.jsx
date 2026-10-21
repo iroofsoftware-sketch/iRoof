@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Spin, Result } from 'antd';
-import { PrinterOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { PrinterOutlined, ArrowLeftOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getInvoiceById } from '../../utils/api';
+import { shareInvoiceViaWhatsApp } from '../../utils/whatsappShare';
 
 const InvoicePrintView = () => {
   const { id } = useParams();
@@ -77,6 +78,27 @@ const InvoicePrintView = () => {
           Back to Invoices
         </Button>
         <div style={{ display: 'flex', gap: 10 }}>
+          <Button
+            onClick={() =>
+              shareInvoiceViaWhatsApp({
+                phone: invoice.customerPhone || invoice.enquiryId?.phone,
+                clientName: invoice.clientName,
+                refCode: invoice.refCode,
+                totalAmount: invoice.grandTotal,
+                status: invoice.status
+              })
+            }
+            icon={<WhatsAppOutlined />}
+            style={{
+              background: '#25D366',
+              borderColor: '#25D366',
+              color: '#ffffff',
+              fontWeight: 600
+            }}
+          >
+            Share via WhatsApp
+          </Button>
+
           <Button
             type="primary"
             icon={<PrinterOutlined />}

@@ -7,7 +7,14 @@ import {
   Dropdown,
   Space,
   Drawer,
-  Breadcrumb
+  Breadcrumb,
+  Badge,
+  Input,
+  Modal,
+  List,
+  Tag,
+  Empty,
+  Spin
 } from 'antd';
 import {
   DashboardOutlined,
@@ -30,10 +37,22 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MenuOutlined,
-  ContactsOutlined
+  ContactsOutlined,
+  SearchOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  InfoCircleOutlined,
+  RightOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import { useAuthStore } from '../store/authStore';
+import { notificationService } from '../services/notificationService';
+import { searchService } from '../services/searchService';
+
+dayjs.extend(relativeTime);
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -121,9 +140,98 @@ const RoleLayout = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+  // Notifications State
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
+
+  // Quick Search State
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
   const { user, role, logout } = useAuthStore();
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await notificationService.getNotifications();
+      if (res && res.data) {
+        setNotifications(res.data);
+        setUnreadCount(res.unreadCount || 0);
+      }
+    } catch (err) {
+      // silent
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 45000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Global Ctrl+K / Cmd+K key listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Debounced Search
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await searchService.globalSearch(searchQuery);
+        if (res && res.data) setSearchResults(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setSearching(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleNotificationClick = async (notif) => {
+    try {
+      if (!notif.isRead) {
+        await notificationService.markAsRead(notif._id);
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notif._id ? { ...n, isRead: true } : n))
+        );
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
+      setNotificationDrawerOpen(false);
+      if (notif.link) {
+        navigate(notif.link);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAllRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -467,13 +575,51 @@ const RoleLayout = () => {
           </div>
 
           {/* RIGHT: Actions & User */}
-          <Space size={16} align="center" style={{ lineHeight: 1 }}>
+          <Space size={14} align="center" style={{ lineHeight: 1 }}>
+            {/* Quick Search Button */}
             <Button
               type="text"
-              icon={<BellOutlined />}
-              style={{ color: '#64748b', fontSize: 16 }}
-              aria-label="Notifications"
-            />
+              icon={<SearchOutlined />}
+              onClick={() => setSearchModalOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                background: '#f1f5f9',
+                border: '1px solid #e2e8f0',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 12.5,
+                color: '#64748b',
+                height: 32
+              }}
+            >
+              <span className="search-hotkey-label">Quick Search</span>
+              <kbd
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 4,
+                  padding: '1px 5px',
+                  fontSize: 10,
+                  color: '#475569',
+                  fontWeight: 600
+                }}
+              >
+                Ctrl K
+              </kbd>
+            </Button>
+
+            {/* Notifications Bell with Badge */}
+            <Badge count={unreadCount} size="small" offset={[-2, 6]}>
+              <Button
+                type="text"
+                icon={<BellOutlined />}
+                onClick={() => setNotificationDrawerOpen(true)}
+                style={{ color: '#64748b', fontSize: 16 }}
+                aria-label="Notifications"
+              />
+            </Badge>
 
             <div style={{ width: 1, height: 20, background: '#e2e8f0' }} />
 
@@ -546,6 +692,179 @@ const RoleLayout = () => {
           </a>
         </Footer>
       </Layout>
+
+      {/* ── INTER-DEPARTMENTAL NOTIFICATION DRAWER ── */}
+      <Drawer
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Notifications ({unreadCount} unread)</span>
+            {unreadCount > 0 && (
+              <Button type="link" size="small" onClick={handleMarkAllRead} style={{ padding: 0 }}>
+                Mark all read
+              </Button>
+            )}
+          </div>
+        }
+        placement="right"
+        width={380}
+        onClose={() => setNotificationDrawerOpen(false)}
+        open={notificationDrawerOpen}
+      >
+        {notifications.length === 0 ? (
+          <Empty description="No notifications" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ marginTop: 40 }} />
+        ) : (
+          <List
+            itemLayout="horizontal"
+            dataSource={notifications}
+            renderItem={(item) => (
+              <div
+                key={item._id}
+                onClick={() => handleNotificationClick(item)}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 8,
+                  marginBottom: 8,
+                  cursor: 'pointer',
+                  background: item.isRead ? '#ffffff' : '#f0fdf4',
+                  border: item.isRead ? '1px solid #f1f5f9' : '1px solid #bbf7d0',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ fontWeight: item.isRead ? 500 : 700, fontSize: 13, color: '#0f172a' }}>
+                      {item.title}
+                    </div>
+                    {!item.isRead && (
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a', flexShrink: 0, marginTop: 5 }} />
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>
+                    {item.message}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, fontSize: 11, color: '#94a3b8' }}>
+                    <span>{item.refCode && <Tag color="blue" style={{ fontSize: 10, padding: '0 4px' }}>{item.refCode}</Tag>}</span>
+                    <span>{dayjs(item.createdAt).fromNow()}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          />
+        )}
+      </Drawer>
+
+      {/* ── GLOBAL SEARCH COMMAND PALETTE MODAL (CTRL+K) ── */}
+      <Modal
+        open={searchModalOpen}
+        onCancel={() => {
+          setSearchModalOpen(false);
+          setSearchQuery('');
+          setSearchResults([]);
+        }}
+        footer={null}
+        width={560}
+        style={{ top: 80 }}
+        styles={{ body: { padding: 0 } }}
+        destroyOnClose
+      >
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>
+          <Input
+            prefix={<SearchOutlined style={{ color: '#94a3b8', fontSize: 16, marginRight: 6 }} />}
+            placeholder="Search Work Orders (WO-...), Customers, Estimates, Invoices..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            bordered={false}
+            autoFocus
+            style={{ fontSize: 14 }}
+            allowClear
+          />
+        </div>
+
+        <div style={{ maxHeight: 380, overflowY: 'auto', padding: '10px 14px' }}>
+          {searching ? (
+            <div style={{ textAlign: 'center', padding: '30px 0' }}>
+              <Spin size="small" />
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>Searching records...</div>
+            </div>
+          ) : searchResults.length > 0 ? (
+            <List
+              dataSource={searchResults}
+              renderItem={(item) => (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    setSearchModalOpen(false);
+                    setSearchQuery('');
+                    setSearchResults([]);
+                    navigate(item.link);
+                  }}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '10px 12px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    transition: 'background 0.15s',
+                    marginBottom: 4
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Tag
+                        color={
+                          item.type === 'workorder'
+                            ? 'blue'
+                            : item.type === 'customer'
+                            ? 'green'
+                            : item.type === 'invoice'
+                            ? 'purple'
+                            : 'gold'
+                        }
+                        style={{ fontSize: 10, margin: 0 }}
+                      >
+                        {item.tag}
+                      </Tag>
+                      <strong style={{ fontSize: 13, color: '#0f172a' }}>{item.title}</strong>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, paddingLeft: 2 }}>
+                      {item.subtitle}
+                    </div>
+                  </div>
+                  <RightOutlined style={{ fontSize: 11, color: '#94a3b8' }} />
+                </div>
+              )}
+            />
+          ) : searchQuery.trim().length >= 2 ? (
+            <Empty
+              description={`No records found matching "${searchQuery}"`}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              style={{ padding: '20px 0' }}
+            />
+          ) : (
+            <div style={{ padding: '24px 12px', textAlign: 'center', color: '#94a3b8', fontSize: 12.5 }}>
+              Type at least 2 characters to search across all operational modules.
+            </div>
+          )}
+        </div>
+        <div
+          style={{
+            padding: '8px 16px',
+            background: '#f8fafc',
+            borderTop: '1px solid #edf2f7',
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 11,
+            color: '#94a3b8',
+            borderRadius: '0 0 8px 8px'
+          }}
+        >
+          <span>Quick Navigation</span>
+          <span>Press ESC to close</span>
+        </div>
+      </Modal>
 
       <style>{`
         .sidebar-logout-btn:hover {
