@@ -192,6 +192,9 @@ const toggleUserStatus = async (req, res) => {
       message: 'Failed to toggle user status',
       error: error.message
     });
+  }
+};
+
 // @desc    Delete user
 // @route   DELETE /api/admin/users/:id
 // @access  Private (Admin only)
