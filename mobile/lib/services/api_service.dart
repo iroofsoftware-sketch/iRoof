@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
@@ -9,8 +10,12 @@ class ApiService {
   static const String prefBaseUrlKey = 'iroof_base_url';
   static const String prefUserKey = 'iroof_user_data';
 
-  // In-memory fallback in case SharedPreferences has issues on specific Android ROMs
+  // In-memory fallback
   static final Map<String, String> _memoryStore = {};
+  static final Map<String, dynamic> _cacheStore = {};
+
+  // Session expiry listener callback
+  static void Function()? onSessionExpired;
 
   static Future<String> getBaseUrl() async {
     try {
@@ -71,7 +76,6 @@ class ApiService {
   static Future<bool> testConnection([String? testUrl]) async {
     final url = testUrl ?? await getBaseUrl();
     try {
-      // testUrl might end in /api or /api/
       final base = url.endsWith('/api') ? url.replaceAll('/api', '') : url;
       final res = await http.get(Uri.parse('$base/api/health')).timeout(const Duration(seconds: 3));
       return res.statusCode == 200;
@@ -85,7 +89,6 @@ class ApiService {
     final cleanEmail = email.toLowerCase().trim();
     final baseUrl = await getBaseUrl();
 
-    // 1. Try real backend API
     try {
       final res = await http
           .post(
@@ -93,7 +96,7 @@ class ApiService {
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({'email': cleanEmail, 'password': password.trim()}),
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -103,11 +106,9 @@ class ApiService {
           return user;
         }
       }
-    } catch (_) {
-      // Server unreachable or timed out -> Proceed to high-availability local fallback
-    }
+    } catch (_) {}
 
-    // 2. High-availability on-site offline fallback for field sales & consultation
+    // High-availability on-site offline fallback for field sales & consultation
     if (cleanEmail.contains('admin')) {
       final user = UserModel(
         id: 'usr_admin_01',
@@ -129,7 +130,6 @@ class ApiService {
       await saveCurrentUser(user);
       return user;
     } else {
-      // Defaults to Site Visitor for consultant on site
       final user = UserModel(
         id: 'usr_site_01',
         name: 'Venkatesh (Site Engineer)',
@@ -142,37 +142,122 @@ class ApiService {
     }
   }
 
-  // ── SUBMIT SITE INSPECTION ──
-  static Future<bool> submitSiteInspection(Map<String, dynamic> data) async {
+  // ── WORK ORDERS (GET ALL / FILTERED) ──
+  static Future<List<Map<String, dynamic>>> getWorkOrders({String? status}) async {
     final baseUrl = await getBaseUrl();
     final user = await getCurrentUser();
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$baseUrl/site-visits'),
-            headers: {
-              'Content-Type': 'application/json',
-              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
-            },
-            body: jsonEncode(data),
-          )
-          .timeout(const Duration(seconds: 4));
 
-      return res.statusCode == 200 || res.statusCode == 201;
-    } catch (_) {
-      // In offline mode, save locally and acknowledge success to consultant
-      return true;
-    }
-  }
-
-  // ── GET WORK ORDERS (PROJECT MANAGER) ──
-  static Future<List<Map<String, dynamic>>> getWorkOrders() async {
-    final baseUrl = await getBaseUrl();
-    final user = await getCurrentUser();
     try {
       final res = await http
           .get(
-            Uri.parse('$baseUrl/estimates'),
+            Uri.parse('$baseUrl/work-orders'),
+            headers: {
+              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['data'] is List) {
+          final list = List<Map<String, dynamic>>.from(data['data']);
+          _cacheStore['work_orders'] = list;
+          return list;
+        }
+      } else if (res.statusCode == 401) {
+        onSessionExpired?.call();
+      }
+    } catch (_) {}
+
+    // Return cached if available
+    if (_cacheStore['work_orders'] is List) {
+      return List<Map<String, dynamic>>.from(_cacheStore['work_orders']);
+    }
+
+    // Default Mock Work Orders
+    return [
+      {
+        '_id': 'wo_01',
+        'refCode': 'WO-2026-0005',
+        'clientName': 'Titan Precision Engineering Works',
+        'siteAddress': 'Plot 18, Phase 2, Hosur Industrial Complex',
+        'roofModel': 'Auditorium',
+        'span': 22.0,
+        'length': 45.0,
+        'height': 2.5,
+        'grandTotal': 1845000,
+        'status': 'completed',
+        'priority': 'urgent',
+        'drawingFiles': [],
+        'materialList': [],
+      },
+      {
+        '_id': 'wo_02',
+        'refCode': 'WO-2026-0002',
+        'clientName': 'Godrej Aerospace Industrial Shed',
+        'siteAddress': 'Industrial Corridor, Vikhroli, Mumbai',
+        'roofModel': 'PEB Cantilever',
+        'span': 18.0,
+        'length': 36.0,
+        'height': 2.0,
+        'grandTotal': 1231212,
+        'status': 'active',
+        'priority': 'high',
+        'drawingFiles': [],
+        'materialList': [],
+      },
+      {
+        '_id': 'wo_03',
+        'refCode': 'WO-2026-0001',
+        'clientName': 'Tata Steel Processing Ltd',
+        'siteAddress': 'Plot 42, SIDCO Industrial Estate, Ambattur, Chennai',
+        'roofModel': 'Curved Arch Shed',
+        'span': 20.0,
+        'length': 40.0,
+        'height': 2.2,
+        'grandTotal': 988368,
+        'status': 'active',
+        'priority': 'medium',
+        'drawingFiles': [],
+        'materialList': [],
+      },
+    ];
+  }
+
+  // ── WORK ORDER BY ID ──
+  static Future<Map<String, dynamic>?> getWorkOrderById(String id) async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+
+    try {
+      final res = await http
+          .get(
+            Uri.parse('$baseUrl/work-orders/$id'),
+            headers: {
+              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return data['data'] ?? data['workOrder'];
+      }
+    } catch (_) {}
+
+    final all = await getWorkOrders();
+    return all.firstWhere((w) => w['_id'] == id || w['id'] == id, orElse: () => all.first);
+  }
+
+  // ── WORK ORDER STATS (PIPELINE & STAGE COUNTS) ──
+  static Future<Map<String, dynamic>> getWorkOrderStats() async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+
+    try {
+      final res = await http
+          .get(
+            Uri.parse('$baseUrl/work-orders/stats'),
             headers: {
               if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
             },
@@ -181,83 +266,337 @@ class ApiService {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        if (data is List) {
-          return List<Map<String, dynamic>>.from(data);
-        } else if (data['estimates'] is List) {
-          return List<Map<String, dynamic>>.from(data['estimates']);
+        if (data['data'] != null) {
+          _cacheStore['work_order_stats'] = data['data'];
+          return Map<String, dynamic>.from(data['data']);
         }
       }
     } catch (_) {}
 
-    // Fallback Mock Production Orders
+    return {
+      'total': 5,
+      'pending_accounts': 2,
+      'pending_design': 0,
+      'pending_pm_review': 0,
+      'drawing_revision': 0,
+      'pending_purchase': 0,
+      'completed': 1,
+    };
+  }
+
+  // ── PM REVIEW (APPROVE BOM / REQUEST REVISION) ──
+  static Future<bool> pmReviewWorkOrder({
+    required String workOrderId,
+    required String decision, // 'approved' or 'revision_requested'
+    String notes = '',
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$baseUrl/work-orders/$workOrderId/pm-review'),
+            headers: {
+              'Content-Type': 'application/json',
+              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+            },
+            body: jsonEncode({
+              'decision': decision,
+              'notes': notes,
+            }),
+          )
+          .timeout(const Duration(seconds: 6));
+
+      return res.statusCode == 200;
+    } catch (_) {
+      return true; // Local demo acknowledge
+    }
+  }
+
+  // ── SITE VISITS (ASSIGNED OR ALL) ──
+  static Future<List<Map<String, dynamic>>> getSiteVisits({bool mineOnly = false}) async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+    final endpoint = mineOnly ? '$baseUrl/site-visits/mine' : '$baseUrl/site-visits';
+
+    try {
+      final res = await http
+          .get(
+            Uri.parse(endpoint),
+            headers: {
+              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['data'] is List) {
+          final list = List<Map<String, dynamic>>.from(data['data']);
+          _cacheStore['site_visits'] = list;
+          return list;
+        }
+      } else if (res.statusCode == 401) {
+        onSessionExpired?.call();
+      }
+    } catch (_) {}
+
+    if (_cacheStore['site_visits'] is List) {
+      return List<Map<String, dynamic>>.from(_cacheStore['site_visits']);
+    }
+
     return [
       {
-        'id': 'wo_01',
-        'refCode': 'WO-2026-081',
-        'clientName': 'Apex Agro Logistics Ltd.',
-        'siteAddress': 'Plot 44, SIPCOT Industrial Park, Hosur',
-        'span': 28.5,
-        'length': 65.0,
-        'status': 'in_progress',
-        'currentStage': 3,
-        'stageName': 'Arch Seaming & Mechanical Lock',
+        '_id': 'sv_01',
+        'refCode': 'SV-2026-0002',
+        'visitType': 'initial',
+        'scheduledDate': '2026-11-20T15:35:28.034Z',
+        'status': 'scheduled',
+        'notes': 'Site kickoff & alignment check for Godrej Aerospace Industrial Shed',
+        'clientName': 'Godrej Aerospace Industrial Shed',
+        'siteAddress': 'Industrial Corridor, Vikhroli, Mumbai',
+        'span': 18.0,
+        'length': 36.0,
+        'roofModel': 'PEB Cantilever',
+        'photos': [],
       },
       {
-        'id': 'wo_02',
-        'refCode': 'WO-2026-084',
-        'clientName': 'Sri Balaji Warehousing Corp',
-        'siteAddress': 'Survey 112, NH-48 Highway Corridor, Ranipet',
-        'span': 32.0,
-        'length': 80.0,
-        'status': 'in_progress',
-        'currentStage': 2,
-        'stageName': 'On-Site Mobile Roll-Forming',
-      },
-      {
-        'id': 'wo_03',
-        'refCode': 'WO-2026-079',
-        'clientName': 'Mahindra Logistics Terminal',
-        'siteAddress': 'Sector 8, Oragadam Auto Cluster, Chennai',
-        'span': 36.0,
-        'length': 95.0,
-        'status': 'completed',
-        'currentStage': 7,
-        'stageName': 'Handed Over & Certified',
+        '_id': 'sv_02',
+        'refCode': 'SV-2026-0001',
+        'visitType': 'initial',
+        'scheduledDate': '2026-12-05T15:34:25.047Z',
+        'status': 'scheduled',
+        'notes': 'Site kickoff & alignment check for Tata Steel Processing Ltd',
+        'clientName': 'Tata Steel Processing Ltd',
+        'siteAddress': 'Plot 42, SIDCO Industrial Estate, Ambattur, Chennai',
+        'span': 20.0,
+        'length': 40.0,
+        'roofModel': 'Curved Arch Shed',
+        'photos': [],
       },
     ];
   }
 
-  // ── GET SITE INSPECTIONS / CONSULTATIONS ──
-  static Future<List<Map<String, dynamic>>> getSiteVisits() async {
+  // ── SUBMIT SITE INSPECTION REPORT & MARK COMPLETE ──
+  static Future<bool> submitSiteInspectionReport({
+    required String visitId,
+    required String report,
+    required String notes,
+    required List<Map<String, dynamic>> photos,
+    String status = 'completed',
+    Map<String, dynamic>? extraMeasurements,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+
+    try {
+      final res = await http
+          .patch(
+            Uri.parse('$baseUrl/site-visits/$visitId'),
+            headers: {
+              'Content-Type': 'application/json',
+              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+            },
+            body: jsonEncode({
+              'report': report,
+              'notes': notes,
+              'photos': photos,
+              'status': status,
+              'completedDate': DateTime.now().toIso8601String(),
+              ...?extraMeasurements != null ? {'measurements': extraMeasurements} : null,
+            }),
+          )
+          .timeout(const Duration(seconds: 6));
+
+      return res.statusCode == 200;
+    } catch (_) {
+      return true; // Local success fallback
+    }
+  }
+
+  // ── SUBMIT SITE INSPECTION (FORM COMPATIBILITY ALIAS) ──
+  static Future<bool> submitSiteInspection(Map<String, dynamic> data) async {
+    return submitSiteInspectionReport(
+      visitId: data['_id'] ?? data['id'] ?? 'sv_01',
+      report: data['report'] ?? 'Field Site Inspection Report',
+      notes: data['notes'] ?? '',
+      photos: [],
+      extraMeasurements: data,
+    );
+  }
+
+  // ── UPLOAD PHOTO (CAMERA / GALLERY) ──
+  static Future<String?> uploadPhoto(XFile file) async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload'));
+      if (user?.token != null) {
+        request.headers['Authorization'] = 'Bearer ${user!.token}';
+      }
+
+      final bytes = await file.readAsBytes();
+      final multipartFile = http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: file.name.isNotEmpty ? file.name : 'site_inspection_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+      request.files.add(multipartFile);
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['data'] != null && data['data']['url'] != null) {
+          final url = data['data']['url'] as String;
+          final host = baseUrl.endsWith('/api') ? baseUrl.replaceAll('/api', '') : baseUrl;
+          return url.startsWith('http') ? url : '$host$url';
+        }
+      }
+    } catch (_) {}
+
+    // Offline demo fallback: return local file path representation
+    return 'file://${file.path}';
+  }
+
+  // ── ENQUIRIES (ADMIN) ──
+  static Future<List<Map<String, dynamic>>> getEnquiries() async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+
+    try {
+      final res = await http
+          .get(
+            Uri.parse('$baseUrl/enquiries'),
+            headers: {
+              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['enquiries'] is List) {
+          final list = List<Map<String, dynamic>>.from(data['enquiries']);
+          _cacheStore['enquiries'] = list;
+          return list;
+        }
+      }
+    } catch (_) {}
+
     return [
       {
-        'id': 'sv_101',
-        'clientName': 'Pioneer Cold Storage Pvt Ltd',
-        'contactPhone': '+91 98401 23456',
-        'siteAddress': 'Kancheepuram Bypass Road, Sunguvarchatram',
-        'span': 24.0,
-        'length': 50.0,
-        'rise': 4.5,
-        'model': 'Standard Curved Arch',
-        'substructure': 'RCC Girders / Beams',
-        'status': 'completed',
-        'estimatedCost': 3120000.0,
-        'date': 'Today, 11:30 AM',
+        '_id': 'enq_01',
+        'clientName': 'Titan Precision Engineering Works',
+        'phone': '9840911223',
+        'address': 'Plot 18, Phase 2, Hosur Industrial Complex',
+        'roofType': 'Auditorium',
+        'status': 'estimated',
       },
       {
-        'id': 'sv_102',
-        'clientName': 'GMR Freight Solutions',
-        'contactPhone': '+91 94440 98765',
-        'siteAddress': 'Ennore Expressway, Manali Industrial Belt',
-        'span': 30.0,
-        'length': 75.0,
-        'rise': 5.8,
-        'model': 'High-Volume Hangar',
-        'substructure': 'Steel Stanchions / Columns',
-        'status': 'pending',
-        'estimatedCost': 5850000.0,
-        'date': 'Yesterday, 03:45 PM',
+        '_id': 'enq_02',
+        'clientName': 'Godrej Aerospace Industrial Shed',
+        'phone': '9840212345',
+        'email': 'supply@godrej.com',
+        'address': 'Industrial Corridor, Vikhroli, Mumbai',
+        'roofType': 'PEB Cantilever',
+        'status': 'estimated',
       },
     ];
+  }
+
+  // ── USERS DIRECTORY (ADMIN) ──
+  static Future<List<Map<String, dynamic>>> getUsers() async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+
+    try {
+      final res = await http
+          .get(
+            Uri.parse('$baseUrl/admin/users'),
+            headers: {
+              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['users'] is List) {
+          final list = List<Map<String, dynamic>>.from(data['users']);
+          _cacheStore['users'] = list;
+          return list;
+        }
+      }
+    } catch (_) {}
+
+    return [
+      {'name': 'Admin User', 'email': 'admin@iroofing.com', 'role': 'admin', 'isActive': true},
+      {'name': 'Project Manager', 'email': 'pm@iroofing.com', 'role': 'projectmanager', 'isActive': true},
+      {'name': 'Site Inspector', 'email': 'sitevisitor@iroofing.com', 'role': 'sitevisitor', 'isActive': true},
+      {'name': 'Design Engineer', 'email': 'design@iroofing.com', 'role': 'design', 'isActive': true},
+      {'name': 'Workshop Lead', 'email': 'workshop@iroofing.com', 'role': 'workshop', 'isActive': true},
+    ];
+  }
+
+  // ── NOTIFICATIONS ──
+  static Future<Map<String, dynamic>> getNotifications() async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+
+    try {
+      final res = await http
+          .get(
+            Uri.parse('$baseUrl/notifications'),
+            headers: {
+              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+            },
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return {
+          'unreadCount': data['unreadCount'] ?? 0,
+          'notifications': data['data'] ?? [],
+        };
+      }
+    } catch (_) {}
+
+    return {
+      'unreadCount': 2,
+      'notifications': [
+        {
+          '_id': 'notif_01',
+          'title': 'New Site Inspection Assigned',
+          'message': 'Godrej Aerospace Industrial Shed visit scheduled for today.',
+          'isRead': false,
+          'createdAt': DateTime.now().subtract(const Duration(minutes: 45)).toIso8601String(),
+        },
+        {
+          '_id': 'notif_02',
+          'title': 'Design Drawings Ready',
+          'message': 'Titan Precision Engineering Works drawings submitted for PM review.',
+          'isRead': false,
+          'createdAt': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+        },
+      ],
+    };
+  }
+
+  static Future<void> markNotificationRead(String id) async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+    try {
+      await http.patch(
+        Uri.parse('$baseUrl/notifications/$id/read'),
+        headers: {
+          if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+        },
+      ).timeout(const Duration(seconds: 3));
+    } catch (_) {}
   }
 }

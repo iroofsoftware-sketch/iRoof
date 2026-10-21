@@ -59,6 +59,7 @@ app.use('/api/estimates', estimateRoutes);
 app.use('/api/customers', require('./src/routes/customerRoutes'));
 app.use('/api/upload', require('./src/routes/uploadRoutes'));
 app.use('/api/workorders', require('./src/routes/workOrderRoutes'));
+app.use('/api/work-orders', require('./src/routes/workOrderRoutes'));
 app.use('/api/design-tasks', require('./src/routes/designTaskRoutes'));
 app.use('/api/purchase-requests', require('./src/routes/purchaseRequestRoutes'));
 app.use('/api/workshop-jobs', require('./src/routes/workshopJobRoutes'));

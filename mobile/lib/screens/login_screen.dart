@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
-import 'admin/admin_home.dart';
-import 'project_manager/pm_home.dart';
-import 'site_visitor/site_visitor_home.dart';
+import 'admin/admin_tab_scaffold.dart';
+import 'project_manager/pm_tab_scaffold.dart';
+import 'site_visitor/site_visitor_tab_scaffold.dart';
 import 'common/server_config_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -78,14 +78,14 @@ class _LoginScreenState extends State<LoginScreen> {
     Widget destination;
     switch (user.role.toLowerCase()) {
       case 'admin':
-        destination = AdminHome(user: user);
+        destination = AdminTabScaffold(user: user);
         break;
       case 'projectmanager':
-        destination = PmHome(user: user);
+        destination = PmTabScaffold(user: user);
         break;
       case 'sitevisitor':
       default:
-        destination = SiteVisitorHome(user: user);
+        destination = SiteVisitorTabScaffold(user: user);
         break;
     }
 

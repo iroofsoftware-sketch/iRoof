@@ -3,15 +3,16 @@ import 'package:flutter/services.dart';
 import 'constants/app_colors.dart';
 import 'models/user_model.dart';
 import 'services/api_service.dart';
+import 'services/pin_auth_service.dart';
 import 'screens/login_screen.dart';
-import 'screens/admin/admin_home.dart';
-import 'screens/project_manager/pm_home.dart';
-import 'screens/site_visitor/site_visitor_home.dart';
+import 'screens/pin_screen.dart';
+import 'screens/admin/admin_tab_scaffold.dart';
+import 'screens/project_manager/pm_tab_scaffold.dart';
+import 'screens/site_visitor/site_visitor_tab_scaffold.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Make system navigation bar and status bar transparent & crisp
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -21,7 +22,6 @@ void main() {
     ),
   );
 
-  // Instantly start the Flutter app without blocking on I/O
   runApp(const IRoofMobileApp());
 }
 
@@ -55,18 +55,16 @@ class IRoofMobileApp extends StatelessWidget {
   static Widget _getDestination(UserModel user) {
     switch (user.role.toLowerCase()) {
       case 'admin':
-        return AdminHome(user: user);
+        return AdminTabScaffold(user: user);
       case 'projectmanager':
-        return PmHome(user: user);
+        return PmTabScaffold(user: user);
       case 'sitevisitor':
       default:
-        return SiteVisitorHome(user: user);
+        return SiteVisitorTabScaffold(user: user);
     }
   }
 }
 
-/// Instant bootstrapper that draws the first frame in < 50ms,
-/// eliminating any splash-screen freeze or ANR.
 class AppBootstrapper extends StatefulWidget {
   const AppBootstrapper({super.key});
 
@@ -83,11 +81,16 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
 
   Future<void> _bootstrap() async {
     UserModel? user;
+    bool pinEnabled = false;
+
     try {
       user = await ApiService.getCurrentUser().timeout(
-        const Duration(milliseconds: 600),
+        const Duration(milliseconds: 700),
         onTimeout: () => null,
       );
+      if (user != null) {
+        pinEnabled = await PinAuthService.isPinEnabled();
+      }
     } catch (_) {
       user = null;
     }
@@ -95,10 +98,17 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
     if (!mounted) return;
 
     if (user != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => IRoofMobileApp._getDestination(user!)),
-      );
+      if (pinEnabled) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => PinScreen(user: user!)),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => IRoofMobileApp._getDestination(user!)),
+        );
+      }
     } else {
       Navigator.pushReplacement(
         context,
@@ -109,35 +119,43 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.primaryDark,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              'I ROOFING',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 3,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: Image.asset(
+                'assets/logos/iroofing_wordmark_white_small.png',
+                height: 54,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => const Text(
+                  'I ROOFING',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 3,
+                  ),
+                ),
               ),
             ),
-            SizedBox(height: 8),
-            Text(
+            const SizedBox(height: 8),
+            const Text(
               'ARCHITECTURAL ROOFING SYSTEMS',
               style: TextStyle(
                 color: AppColors.accentGold,
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 2,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2.2,
               ),
             ),
-            SizedBox(height: 32),
-            SizedBox(
-              width: 28,
-              height: 28,
+            const SizedBox(height: 36),
+            const SizedBox(
+              width: 26,
+              height: 26,
               child: CircularProgressIndicator(
                 strokeWidth: 2.5,
                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentGold),
