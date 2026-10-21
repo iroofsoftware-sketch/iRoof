@@ -23,7 +23,7 @@ const estimateSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['draft', 'submitted', 'approved', 'rejected'],
+      enum: ['draft', 'submitted', 'approved', 'work_order_issued', 'completed', 'rejected'],
       default: 'draft'
     },
     createdBy: {

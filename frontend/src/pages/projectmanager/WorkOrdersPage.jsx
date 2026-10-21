@@ -45,10 +45,18 @@ const PRIORITY_TAGS = {
 };
 
 const STATUS_CONFIG = {
-  draft: { color: '#6b7280', label: 'Draft' },
+  pending_accounts_approval: { color: '#d97706', label: '1. Accounts Approval' },
+  pending_design: { color: '#2563eb', label: '2. In Design' },
+  pending_pm_review: { color: '#7c3aed', label: '3. PM Review' },
+  drawing_revision: { color: '#dc2626', label: '3b. Drawing Revision' },
+  pending_purchase: { color: '#0891b2', label: '4. Procurement' },
+  pending_delivery: { color: '#4f46e5', label: '5. Awaiting Delivery' },
+  materials_received: { color: '#059669', label: '6a. GRN Verified' },
+  in_fabrication: { color: '#0b2e59', label: '6b. In Fabrication' },
+  completed: { color: '#15803d', label: '7. Completed' },
   active: { color: '#3b82f6', label: 'Active' },
+  draft: { color: '#6b7280', label: 'Draft' },
   on_hold: { color: '#f59e0b', label: 'On Hold' },
-  completed: { color: '#10b981', label: 'Completed' },
   cancelled: { color: '#ef4444', label: 'Cancelled' }
 };
 

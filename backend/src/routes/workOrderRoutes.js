@@ -6,6 +6,13 @@ const {
   getWorkOrders,
   getWorkOrderById,
   createWorkOrder,
+  accountsApprove,
+  designSubmitDrawings,
+  pmReview,
+  purchaseMarkOrdered,
+  workshopVerifyMaterials,
+  workshopStartFabrication,
+  workshopComplete,
   updateWorkOrder,
   deleteWorkOrder,
   getWorkOrderStats
@@ -13,10 +20,48 @@ const {
 
 router.use(protect);
 
-router.post('/', authorize('admin', 'projectmanager'), createWorkOrder);
-router.get('/stats', authorize('admin', 'projectmanager'), getWorkOrderStats);
-router.get('/', authorize('admin', 'projectmanager'), getWorkOrders);
-router.get('/:id', authorize('admin', 'projectmanager'), getWorkOrderById);
+// Reading work orders & stats — accessible to all operational roles
+const ALL_OPS_ROLES = [
+  'admin',
+  'sales',
+  'accounts',
+  'design',
+  'projectmanager',
+  'purchase',
+  'workshop',
+  'sitevisitor'
+];
+
+router.get('/stats', authorize(...ALL_OPS_ROLES), getWorkOrderStats);
+router.get('/', authorize(...ALL_OPS_ROLES), getWorkOrders);
+router.get('/:id', authorize(...ALL_OPS_ROLES), getWorkOrderById);
+
+// GATE 1: Sales issues Work Order & Approval to Accounts
+router.post('/issue-from-sales', authorize('sales', 'admin', 'projectmanager'), createWorkOrder);
+router.post('/', authorize('sales', 'admin', 'projectmanager'), createWorkOrder);
+
+// GATE 2: Accounts confirms quotation & payment terms, releases to Design
+router.post('/:id/accounts-approve', authorize('accounts', 'admin'), accountsApprove);
+
+// GATE 3: Design submits drawings to Project Manager
+router.post('/:id/design-submit', authorize('design', 'admin'), designSubmitDrawings);
+
+// GATE 4: Project Manager reviews drawings & releases Material List (or requests revision)
+router.post('/:id/pm-review', authorize('projectmanager', 'admin'), pmReview);
+
+// GATE 5: Purchase orders materials from Suppliers
+router.post('/:id/purchase-ordered', authorize('purchase', 'admin'), purchaseMarkOrdered);
+
+// GATE 6A: Workshop verifies delivered materials against Material List
+router.post('/:id/workshop-verify-materials', authorize('workshop', 'admin'), workshopVerifyMaterials);
+
+// GATE 6B: Workshop starts fabrication / sheet production
+router.post('/:id/workshop-start-fabrication', authorize('workshop', 'admin'), workshopStartFabrication);
+
+// GATE 7: Workshop completes fabrication / Work Proceeds
+router.post('/:id/workshop-complete', authorize('workshop', 'projectmanager', 'admin'), workshopComplete);
+
+// General update & delete
 router.patch('/:id', authorize('admin', 'projectmanager'), updateWorkOrder);
 router.delete('/:id', authorize('admin'), deleteWorkOrder);
 
