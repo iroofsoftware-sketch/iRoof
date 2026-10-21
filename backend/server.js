@@ -7,6 +7,7 @@ const connectDB = require('./src/config/db');
 // Route imports
 const authRoutes = require('./src/routes/authRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
+const enquiryRoutes = require('./src/routes/enquiryRoutes');
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.get('/api/health', (req, res) => {
 // Mount Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/enquiries', enquiryRoutes);
 
 // 404 handler
 app.use((req, res) => {
