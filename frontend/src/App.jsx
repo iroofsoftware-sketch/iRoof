@@ -8,6 +8,7 @@ import RoleLayout from './layouts/RoleLayout';
 // Dashboards & Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UsersPage from './pages/admin/UsersPage';
+import RateMastersPage from './pages/admin/RateMastersPage';
 import SalesDashboard from './pages/sales/SalesDashboard';
 import AccountsDashboard from './pages/accounts/AccountsDashboard';
 import DesignDashboard from './pages/design/DesignDashboard';
@@ -47,7 +48,7 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<UsersPage />} />
-            <Route path="/admin/rates" element={<AdminDashboard />} />
+            <Route path="/admin/rates" element={<RateMastersPage />} />
           </Route>
 
           {/* Sales Routes */}
