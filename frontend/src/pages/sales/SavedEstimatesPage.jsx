@@ -66,9 +66,9 @@ const SavedEstimatesPage = () => {
       title: 'REF #',
       dataIndex: '_id',
       key: 'id',
-      width: 120,
+      width: 140,
       render: (id) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d', fontSize: 12 }}>
+        <span className="ref-badge">
           EST-{id.slice(-6).toUpperCase()}
         </span>
       )
@@ -78,9 +78,9 @@ const SavedEstimatesPage = () => {
       key: 'client',
       render: (_, r) => (
         <div>
-          <span style={{ fontWeight: 500, color: '#111827' }}>{r.enquiryId?.clientName || 'General Estimate'}</span>
+          <span style={{ fontWeight: 600, color: '#0f172a' }}>{r.enquiryId?.clientName || 'General Estimate'}</span>
           {r.enquiryId?.phone && (
-            <div style={{ fontSize: 12, color: '#6b7280' }}>{r.enquiryId.phone}</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>{r.enquiryId.phone}</div>
           )}
         </div>
       )
@@ -90,7 +90,7 @@ const SavedEstimatesPage = () => {
       dataIndex: 'model',
       key: 'model',
       render: (m) => (
-        <Tag bordered={false} style={{ background: '#eff6ff', color: '#1e40af', borderRadius: 4, fontWeight: 500 }}>
+        <Tag bordered={false} style={{ background: '#f0f5fa', color: '#0b2e59', borderRadius: 4, fontWeight: 600, border: '1px solid rgba(11, 46, 89, 0.12)' }}>
           {m}
         </Tag>
       )
@@ -100,7 +100,7 @@ const SavedEstimatesPage = () => {
       key: 'dims',
       render: (_, r) => {
         const inp = r.inputData || {};
-        return <span style={{ color: '#374151' }}>{inp.span || '—'}m × {inp.length || '—'}m</span>;
+        return <span style={{ color: '#334155', fontWeight: 500 }} className="tabular-nums">{inp.span || '—'}m × {inp.length || '—'}m</span>;
       }
     },
     {
@@ -108,7 +108,7 @@ const SavedEstimatesPage = () => {
       key: 'area',
       render: (_, r) => {
         const area = r.results?.area;
-        return <span style={{ color: '#6b7280' }}>{area ? `${Number(area).toFixed(1)} ft²` : '—'}</span>;
+        return <span style={{ color: '#64748b' }} className="tabular-nums">{area ? `${Number(area).toFixed(1)} ft²` : '—'}</span>;
       }
     },
     {
@@ -118,7 +118,7 @@ const SavedEstimatesPage = () => {
       render: (_, r) => {
         const total = r.results?.costs?.grandTotal || r.results?.costs?.beforeGst || 0;
         return (
-          <span style={{ fontWeight: 700, color: '#0b315d', fontSize: 14 }}>
+          <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }} className="tabular-nums">
             ₹ {Number(total).toLocaleString('en-IN')}
           </span>
         );
@@ -192,18 +192,7 @@ const SavedEstimatesPage = () => {
       </div>
 
       {/* ── FILTER BAR ── */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #dde3ea',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center'
-        }}
-      >
+      <div className="filter-bar">
         <Input
           prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
           placeholder="Search by client, model, or ref..."

@@ -106,16 +106,7 @@ const WorkOrderDetailPage = () => {
           </Button>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span
-                style={{
-                  fontFamily: 'monospace',
-                  background: '#0b315d',
-                  color: '#ffffff',
-                  fontSize: 12,
-                  padding: '2px 8px',
-                  borderRadius: 4
-                }}
-              >
+              <span className="ref-badge" style={{ fontSize: 13, padding: '3px 9px' }}>
                 {workOrder.refCode}
               </span>
               <h1 className="page-title" style={{ margin: 0 }}>
@@ -130,9 +121,9 @@ const WorkOrderDetailPage = () => {
         </div>
 
         <Space>
-          <Tag color={sCfg.color} style={{ fontSize: 13, padding: '4px 12px', fontWeight: 600 }}>
-            {sCfg.label.toUpperCase()}
-          </Tag>
+          <span className={`status-dot status-${workOrder.status}`} style={{ fontSize: 12.5, padding: '4px 12px' }}>
+            {sCfg.label}
+          </span>
           <Button onClick={() => setStatusModalVisible(true)}>Change Status</Button>
         </Space>
       </div>

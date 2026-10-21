@@ -288,30 +288,20 @@ const InvoicesPage = () => {
       title: 'INVOICE #',
       dataIndex: 'refCode',
       key: 'refCode',
-      width: 130,
-      render: (val) => (
-        <span
-          style={{
-            fontFamily: 'monospace',
-            fontWeight: 600,
-            color: '#0b315d',
-            fontSize: 12
-          }}
-        >
-          {val || 'INV-REF'}
-        </span>
-      )
+      width: 140,
+      render: (val) => <span className="ref-badge">{val || 'INV-REF'}</span>
     },
     {
       title: 'WORK ORDER',
       key: 'wo',
+      width: 140,
       render: (_, r) => (
         <span
+          className="ref-badge"
           style={{
-            fontFamily: 'monospace',
             fontSize: 11,
-            color: '#6b7280',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            opacity: 0.85
           }}
           onClick={(e) => {
             e.stopPropagation();
@@ -328,14 +318,15 @@ const InvoicesPage = () => {
       title: 'CLIENT',
       dataIndex: 'clientName',
       key: 'clientName',
-      render: (val) => <span style={{ fontWeight: 500, color: '#111827' }}>{val}</span>
+      render: (val) => <span style={{ fontWeight: 600, color: '#0f172a' }}>{val}</span>
     },
     {
       title: 'INVOICE DATE',
       dataIndex: 'invoiceDate',
       key: 'invoiceDate',
+      width: 120,
       render: (val) => (
-        <span style={{ fontSize: 12, color: '#6b7280' }}>
+        <span style={{ fontSize: 12.5, color: '#64748b' }} className="tabular-nums">
           {val ? dayjs(val).format('DD MMM YYYY') : '—'}
         </span>
       )
@@ -343,6 +334,7 @@ const InvoicesPage = () => {
     {
       title: 'DUE DATE',
       key: 'dueDate',
+      width: 120,
       render: (_, r) => {
         const isPastDue =
           r.dueDate &&
@@ -350,7 +342,7 @@ const InvoicesPage = () => {
           r.status !== 'paid' &&
           r.status !== 'cancelled';
         return (
-          <span style={{ fontSize: 12, color: isPastDue ? '#b91c1c' : '#6b7280', fontWeight: isPastDue ? 600 : 400 }}>
+          <span style={{ fontSize: 12.5, color: isPastDue ? '#b91c1c' : '#64748b', fontWeight: isPastDue ? 600 : 400 }} className="tabular-nums">
             {r.dueDate ? dayjs(r.dueDate).format('DD MMM YYYY') : '—'}
           </span>
         );
@@ -360,8 +352,9 @@ const InvoicesPage = () => {
       title: 'GRAND TOTAL',
       dataIndex: 'grandTotal',
       key: 'grandTotal',
+      align: 'right',
       render: (val) => (
-        <span style={{ fontWeight: 600, color: '#111827', fontSize: 13 }}>
+        <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }} className="tabular-nums">
           ₹ {Number(val || 0).toLocaleString('en-IN')}
         </span>
       )
@@ -370,8 +363,9 @@ const InvoicesPage = () => {
       title: 'PAID',
       dataIndex: 'amountPaid',
       key: 'amountPaid',
+      align: 'right',
       render: (val) => (
-        <span style={{ fontWeight: 600, color: '#15803d', fontSize: 13 }}>
+        <span style={{ fontWeight: 600, color: '#15803d', fontSize: 13 }} className="tabular-nums">
           ₹ {Number(val || 0).toLocaleString('en-IN')}
         </span>
       )
@@ -380,10 +374,11 @@ const InvoicesPage = () => {
       title: 'OUTSTANDING',
       dataIndex: 'amountDue',
       key: 'amountDue',
+      align: 'right',
       render: (val, r) => {
         const due = val !== undefined ? val : Math.max(0, (r.grandTotal || 0) - (r.amountPaid || 0));
         return (
-          <span style={{ fontWeight: 600, color: due > 0 ? '#c2410c' : '#15803d', fontSize: 13 }}>
+          <span style={{ fontWeight: 600, color: due > 0 ? '#b45309' : '#15803d', fontSize: 13 }} className="tabular-nums">
             ₹ {Number(due).toLocaleString('en-IN')}
           </span>
         );
@@ -393,6 +388,7 @@ const InvoicesPage = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (st, r) => {
         const isPastDue =
           r.dueDate &&
@@ -403,24 +399,8 @@ const InvoicesPage = () => {
         const cfg = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.draft;
 
         return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 12,
-              fontWeight: 500
-            }}
-          >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                backgroundColor: cfg.color
-              }}
-            />
-            <span style={{ color: cfg.color }}>{cfg.label}</span>
+          <span className={`status-dot status-${displayStatus}`}>
+            <span style={{ textTransform: 'capitalize' }}>{cfg.label}</span>
           </span>
         );
       }
@@ -540,19 +520,7 @@ const InvoicesPage = () => {
       </Row>
 
       {/* ── FILTER BAR ── */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #dde3ea',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}
-      >
+      <div className="filter-bar">
         <Input
           prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
           placeholder="Search by client name or INV ref..."

@@ -54,19 +54,16 @@ const SiteVisitorDashboard = () => {
       title: 'REF',
       dataIndex: 'refCode',
       key: 'refCode',
-      render: (t) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>
-          {t || 'SV-VISIT'}
-        </span>
-      )
+      width: 140,
+      render: (t) => <span className="ref-badge">{t || 'SV-VISIT'}</span>
     },
     {
       title: 'CLIENT / SITE',
       key: 'client',
       render: (_, r) => (
         <div>
-          <span style={{ fontWeight: 500 }}>{r.workOrderId?.clientName || 'General Client'}</span>
-          <div style={{ fontSize: 11, color: '#6b7280' }}>
+          <span style={{ fontWeight: 600, color: '#0f172a' }}>{r.workOrderId?.clientName || 'General Client'}</span>
+          <div style={{ fontSize: 11, color: '#64748b' }}>
             {r.workOrderId?.siteAddress || 'Site Location'}
           </div>
         </div>
@@ -76,7 +73,7 @@ const SiteVisitorDashboard = () => {
       title: 'ASSIGNED',
       key: 'assigned',
       render: (_, r) => (
-        <span style={{ color: '#6b7280' }}>
+        <span style={{ color: '#475569', fontWeight: 500 }}>
           {r.assignedTo?.name || user?.name || 'Field Officer'}
         </span>
       )
@@ -85,6 +82,7 @@ const SiteVisitorDashboard = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (st) => (
         <span className={`status-dot status-${st || 'new'}`}>
           <span style={{ textTransform: 'capitalize' }}>{(st || 'scheduled').replace('_', ' ')}</span>
@@ -95,8 +93,9 @@ const SiteVisitorDashboard = () => {
       title: 'SCHEDULED DATE',
       dataIndex: 'scheduledDate',
       key: 'scheduledDate',
+      width: 140,
       render: (d) => (
-        <span style={{ color: '#6b7280', fontSize: 12 }}>
+        <span style={{ color: '#64748b', fontSize: 12.5 }} className="tabular-nums">
           {d ? dayjs(d).format('DD/MM/YYYY') : '—'}
         </span>
       )
@@ -106,12 +105,12 @@ const SiteVisitorDashboard = () => {
   return (
     <div>
       {/* ── WELCOME ROW ── */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
+      <div style={{ marginBottom: 22 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
           Good {greetingTime}, {firstName}
         </h1>
-        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-          Field Site Operations · {formattedDate}
+        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+          Site Inspection & Field Measurement Console · {formattedDate}
         </div>
       </div>
 

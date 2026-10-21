@@ -178,44 +178,74 @@ const RoleLayout = () => {
   ];
 
   const sidebarContent = (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#081a36' }}>
       <div>
         {/* LOGO AREA */}
         <div
           style={{
-            height: 56,
+            height: 60,
             padding: '0 20px',
             display: 'flex',
             alignItems: 'center',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            cursor: 'pointer'
+            borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
+            cursor: 'pointer',
+            background: 'rgba(0, 0, 0, 0.15)'
           }}
           onClick={() => {
             navigate(menuItems[0]?.key || '/');
             if (isMobile) setMobileDrawerOpen(false);
           }}
         >
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
-            <span style={{ color: '#c9940a' }}>I </span>
-            <span>Roof</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                background: 'linear-gradient(135deg, #c9940a 0%, #a17304 100%)',
+                borderRadius: 6,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: 16,
+                letterSpacing: '-0.02em',
+                boxShadow: '0 2px 6px rgba(201, 148, 10, 0.25)'
+              }}
+            >
+              I
+            </div>
+            {!collapsed && (
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#ffffff', letterSpacing: '0.06em', lineHeight: 1.15 }}>
+                  I ROOFING
+                </div>
+                <div style={{ fontSize: 9.5, color: '#c9940a', letterSpacing: '0.08em', fontWeight: 600 }}>
+                  ENTERPRISE v2
+                </div>
+              </div>
+            )}
           </div>
-          <span
-            style={{
-              background: 'rgba(255, 255, 255, 0.10)',
-              color: 'rgba(255, 255, 255, 0.70)',
-              borderRadius: 4,
-              padding: '1px 6px',
-              fontSize: 10,
-              marginLeft: 8,
-              fontWeight: 500
-            }}
-          >
-            v2
-          </span>
         </div>
 
+        {/* SECTION LABEL */}
+        {!collapsed && (
+          <div
+            style={{
+              padding: '16px 20px 6px 20px',
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'rgba(255, 255, 255, 0.35)'
+            }}
+          >
+            Workspace Modules
+          </div>
+        )}
+
         {/* NAVIGATION */}
-        <div style={{ padding: '8px 0' }}>
+        <div style={{ padding: '4px 6px' }}>
           <Menu
             theme="dark"
             mode="inline"
@@ -226,7 +256,7 @@ const RoleLayout = () => {
               if (isMobile) setMobileDrawerOpen(false);
             }}
             style={{
-              background: '#0b315d',
+              background: 'transparent',
               borderRight: 0
             }}
           />
@@ -236,25 +266,35 @@ const RoleLayout = () => {
       {/* USER BLOCK */}
       <div
         style={{
-          padding: '12px 16px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          padding: '14px 16px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.07)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'rgba(0, 0, 0, 0.10)'
+          background: 'rgba(0, 0, 0, 0.15)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
-          <Avatar size={32} style={{ background: '#c9940a', color: '#ffffff', fontWeight: 600, flexShrink: 0 }}>
+          <Avatar
+            size={32}
+            style={{
+              background: '#c9940a',
+              color: '#ffffff',
+              fontWeight: 700,
+              flexShrink: 0,
+              border: '1.5px solid rgba(255, 255, 255, 0.2)',
+              fontSize: 12
+            }}
+          >
             {userInitials}
           </Avatar>
           {!collapsed && (
-            <div style={{ overflow: 'hidden', lineHeight: 1.3 }}>
+            <div style={{ overflow: 'hidden', lineHeight: 1.25 }}>
               <div
                 style={{
                   color: '#ffffff',
-                  fontSize: 13,
-                  fontWeight: 500,
+                  fontSize: 12.5,
+                  fontWeight: 600,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
@@ -262,8 +302,21 @@ const RoleLayout = () => {
               >
                 {user?.name || 'Staff User'}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.50)', fontSize: 11, textTransform: 'capitalize' }}>
-                {user?.role || role}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <span
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.10)',
+                    color: 'rgba(255, 255, 255, 0.75)',
+                    padding: '1px 5px',
+                    borderRadius: 3,
+                    fontSize: 9.5,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em'
+                  }}
+                >
+                  {user?.role || role}
+                </span>
               </div>
             </div>
           )}
@@ -274,8 +327,9 @@ const RoleLayout = () => {
             type="text"
             icon={<LogoutOutlined />}
             onClick={handleLogout}
+            title="Sign Out"
             style={{
-              color: 'rgba(255,255,255,0.40)',
+              color: 'rgba(255,255,255,0.45)',
               padding: 4,
               fontSize: 14
             }}
@@ -287,7 +341,7 @@ const RoleLayout = () => {
   );
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f3f6f9' }}>
+    <Layout style={{ minHeight: '100vh', background: '#f8fafc' }}>
       {/* DESKTOP SIDEBAR */}
       {!isMobile && (
         <Sider
@@ -295,14 +349,15 @@ const RoleLayout = () => {
           collapsible
           collapsed={collapsed}
           width={240}
-          collapsedWidth={60}
+          collapsedWidth={64}
           style={{
-            background: '#0b315d',
+            background: '#081a36',
             position: 'sticky',
             top: 0,
             height: '100vh',
             overflow: 'hidden',
-            zIndex: 100
+            zIndex: 100,
+            borderRight: '1px solid rgba(255, 255, 255, 0.07)'
           }}
         >
           {sidebarContent}
@@ -315,7 +370,7 @@ const RoleLayout = () => {
           placement="left"
           onClose={() => setMobileDrawerOpen(false)}
           open={mobileDrawerOpen}
-          styles={{ body: { padding: 0, background: '#0b315d' } }}
+          styles={{ body: { padding: 0, background: '#081a36' } }}
           width={240}
           closable={false}
         >
@@ -323,14 +378,14 @@ const RoleLayout = () => {
         </Drawer>
       )}
 
-      <Layout style={{ background: '#f3f6f9' }}>
+      <Layout style={{ background: '#f8fafc' }}>
         {/* TOP HEADER */}
         <Header
           style={{
-            height: 56,
+            height: 58,
             background: '#ffffff',
-            borderBottom: '1px solid #dde3ea',
-            padding: '0 24px',
+            borderBottom: '1px solid #e2e8f0',
+            padding: '0 28px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -353,52 +408,94 @@ const RoleLayout = () => {
                 type="text"
                 icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                 onClick={() => setCollapsed(!collapsed)}
-                style={{ fontSize: 16, color: '#6b7280', padding: '4px 8px' }}
+                style={{ fontSize: 16, color: '#64748b', padding: '4px 8px' }}
               />
             )}
 
-            <div style={{ lineHeight: 1.2 }}>
+            <div style={{ lineHeight: 1.25 }}>
               <Breadcrumb
                 items={[
-                  { title: <span style={{ fontSize: 11, color: '#6b7280' }}>{sectionName}</span> },
-                  { title: <span style={{ fontSize: 11, color: '#111827', fontWeight: 500 }}>{pageTitle}</span> }
+                  { title: <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>{sectionName}</span> },
+                  { title: <span style={{ fontSize: 11, color: '#0f172a', fontWeight: 600 }}>{pageTitle}</span> }
                 ]}
                 style={{ fontSize: 11, marginBottom: 2 }}
               />
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#111827', letterSpacing: '-0.01em' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>
                 {pageTitle}
               </div>
             </div>
           </div>
 
           {/* RIGHT: Actions & User */}
-          <Space size={14} align="center">
-            <Button
-              type="text"
-              icon={<SearchOutlined />}
-              style={{ color: '#6b7280', fontSize: 16 }}
-              aria-label="Search"
-            />
+          <Space size={16} align="center">
+            {/* Quick Search Chip */}
+            {!isMobile && (
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 6,
+                  padding: '5px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 12,
+                  color: '#64748b'
+                }}
+              >
+                <SearchOutlined style={{ fontSize: 13, color: '#94a3b8' }} />
+                <span>Search system...</span>
+              </div>
+            )}
+
+            {/* Operational Status Capsule */}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                padding: '3px 9px',
+                borderRadius: 9999,
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#15803d'
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
+              <span>Operational</span>
+            </div>
+
             <Button
               type="text"
               icon={<BellOutlined />}
-              style={{ color: '#6b7280', fontSize: 16 }}
+              style={{ color: '#64748b', fontSize: 16 }}
               aria-label="Notifications"
             />
 
-            <div style={{ width: 1, height: 20, background: '#dde3ea' }} />
+            <div style={{ width: 1, height: 22, background: '#e2e8f0' }} />
 
             <Dropdown menu={{ items: userDropdownItems }} placement="bottomRight" arrow>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                <Avatar size={32} style={{ background: '#0b315d', color: '#ffffff', fontWeight: 600 }}>
+                <Avatar
+                  size={32}
+                  style={{
+                    background: '#0b2e59',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    border: '1px solid rgba(11, 46, 89, 0.2)'
+                  }}
+                >
                   {userInitials}
                 </Avatar>
                 {!isMobile && (
                   <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
                       {user?.name || 'Staff User'}
                     </div>
-                    <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>
+                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'capitalize' }}>
                       {user?.role || role}
                     </div>
                   </div>
@@ -411,13 +508,13 @@ const RoleLayout = () => {
         {/* CONTENT AREA */}
         <Content
           style={{
-            background: '#f3f6f9',
-            padding: '24px',
+            background: '#f8fafc',
+            padding: '24px 28px',
             overflowY: 'auto',
-            minHeight: 'calc(100vh - 56px)'
+            minHeight: 'calc(100vh - 58px)'
           }}
         >
-          <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+          <div style={{ maxWidth: 1440, margin: '0 auto' }}>
             <Outlet />
           </div>
         </Content>
@@ -429,6 +526,7 @@ const RoleLayout = () => {
         }
         .ant-menu-dark .ant-menu-item-selected {
           border-left: 3px solid #c9940a !important;
+          background: linear-gradient(90deg, rgba(201, 148, 10, 0.2) 0%, rgba(201, 148, 10, 0.04) 100%) !important;
         }
       `}</style>
     </Layout>

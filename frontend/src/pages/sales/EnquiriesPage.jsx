@@ -197,10 +197,10 @@ const EnquiriesPage = () => {
       title: 'REF #',
       dataIndex: '_id',
       key: 'ref',
-      width: 100,
+      width: 130,
       render: (id) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 500, color: '#0b315d', fontSize: 12 }}>
-          #{id.slice(-6).toUpperCase()}
+        <span className="ref-badge">
+          ENQ-{id.slice(-6).toUpperCase()}
         </span>
       )
     },
@@ -208,18 +208,19 @@ const EnquiriesPage = () => {
       title: 'CUSTOMER',
       dataIndex: 'clientName',
       key: 'customer',
-      render: (name) => <span style={{ fontWeight: 500, color: '#111827' }}>{name}</span>
+      render: (name) => <span style={{ fontWeight: 600, color: '#0f172a' }}>{name}</span>
     },
     {
       title: 'LOCATION',
       dataIndex: 'address',
       key: 'location',
-      render: (loc) => <span style={{ color: '#6b7280' }}>{loc || '—'}</span>
+      render: (loc) => <span style={{ color: '#64748b' }}>{loc || '—'}</span>
     },
     {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (st) => (
         <span className={`status-dot status-${st || 'new'}`}>
           <span style={{ textTransform: 'capitalize' }}>{st || 'new'}</span>
@@ -230,8 +231,9 @@ const EnquiriesPage = () => {
       title: 'DATE',
       dataIndex: 'enquiryDate',
       key: 'date',
+      width: 120,
       render: (d) => (
-        <span style={{ color: '#6b7280', fontSize: 12 }}>
+        <span style={{ color: '#64748b', fontSize: 12.5 }} className="tabular-nums">
           {d ? new Date(d).toLocaleDateString('en-IN') : '—'}
         </span>
       )
@@ -244,10 +246,10 @@ const EnquiriesPage = () => {
         const initial = staffName.charAt(0).toUpperCase();
         return (
           <Space size={6}>
-            <Avatar size={22} style={{ background: '#dde3ea', color: '#374151', fontSize: 11 }}>
+            <Avatar size={22} style={{ background: '#e2e8f0', color: '#1e293b', fontSize: 11, fontWeight: 600 }}>
               {initial}
             </Avatar>
-            <span style={{ fontSize: 12, color: '#374151' }}>{staffName}</span>
+            <span style={{ fontSize: 12.5, color: '#334155', fontWeight: 500 }}>{staffName}</span>
           </Space>
         );
       }
@@ -265,7 +267,7 @@ const EnquiriesPage = () => {
             e.stopPropagation();
             handleOpenDrawer(record);
           }}
-          style={{ color: '#0b315d', fontWeight: 500 }}
+          style={{ color: '#0b2e59', fontWeight: 600 }}
         >
           View
         </Button>
@@ -279,45 +281,32 @@ const EnquiriesPage = () => {
       <div className="page-header">
         <div>
           <div className="page-title">Enquiries</div>
-          <div className="page-subtitle">Manage client leads and site visits</div>
+          <div className="page-subtitle">Commercial client leads, architectural requirements, and site visit schedules</div>
         </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleOpenCreateModal}
-          style={{ background: '#0b315d', borderColor: '#0b315d' }}
         >
           New Enquiry
         </Button>
       </div>
 
       {/* FILTER BAR */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #dde3ea',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}
-      >
+      <div className="filter-bar">
         <Input
-          prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
-          placeholder="Search by name, ref, location..."
+          prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+          placeholder="Search by client name, ref code, location..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ width: 260, height: 36, borderRadius: 8 }}
+          style={{ width: 280, height: 36 }}
           allowClear
         />
 
         <Select
           value={statusFilter}
           onChange={(val) => setStatusFilter(val)}
-          style={{ width: 150, height: 36 }}
+          style={{ width: 160, height: 36 }}
           placeholder="All statuses"
         >
           <Option value="all">All statuses</Option>
@@ -332,11 +321,11 @@ const EnquiriesPage = () => {
           value={dateRange}
           onChange={(dates) => setDateRange(dates)}
           format="DD/MM/YYYY"
-          style={{ height: 36, borderRadius: 8 }}
+          style={{ height: 36 }}
         />
 
         {hasActiveFilters && (
-          <Button type="link" onClick={clearFilters} style={{ color: '#6b7280', fontSize: 13, padding: 0 }}>
+          <Button type="link" onClick={clearFilters} style={{ color: '#64748b', fontSize: 13, padding: 0 }}>
             Clear filters
           </Button>
         )}

@@ -74,19 +74,15 @@ const PurchaseDashboard = () => {
       title: 'PO #',
       dataIndex: 'refCode',
       key: 'refCode',
-      width: 140,
-      render: (t) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>
-          {t}
-        </span>
-      )
+      width: 150,
+      render: (t) => <span className="ref-badge">{t}</span>
     },
     {
       title: 'SUPPLIER',
       dataIndex: 'supplierId',
       key: 'supplierId',
       render: (s) => (
-        <span style={{ fontWeight: 500, color: '#111827' }}>
+        <span style={{ fontWeight: 600, color: '#0f172a' }}>
           {s?.name || 'Assigned Vendor'}
         </span>
       )
@@ -97,7 +93,7 @@ const PurchaseDashboard = () => {
       key: 'grandTotal',
       align: 'right',
       render: (val) => (
-        <span style={{ fontWeight: 600, color: '#111827' }}>
+        <span style={{ fontWeight: 600, color: '#0f172a' }} className="tabular-nums">
           ₹ {Number(val || 0).toLocaleString('en-IN')}
         </span>
       )
@@ -106,27 +102,12 @@ const PurchaseDashboard = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 140,
       render: (st) => {
         const cfg = STATUS_CONFIG[st] || STATUS_CONFIG.draft;
         return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 12,
-              fontWeight: 500
-            }}
-          >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                backgroundColor: cfg.color
-              }}
-            />
-            <span style={{ color: cfg.color }}>{cfg.label}</span>
+          <span className={`status-dot status-${st}`}>
+            <span style={{ textTransform: 'capitalize' }}>{cfg.label}</span>
           </span>
         );
       }
@@ -135,6 +116,7 @@ const PurchaseDashboard = () => {
       title: 'EXPECTED DELIVERY',
       dataIndex: 'expectedDelivery',
       key: 'expectedDelivery',
+      width: 150,
       render: (d, record) => {
         const isPastDue =
           d &&
@@ -144,10 +126,11 @@ const PurchaseDashboard = () => {
         return (
           <span
             style={{
-              color: isPastDue ? '#b91c1c' : '#6b7280',
-              fontSize: 12,
+              color: isPastDue ? '#b91c1c' : '#64748b',
+              fontSize: 12.5,
               fontWeight: isPastDue ? 600 : 400
             }}
+            className="tabular-nums"
           >
             {d ? dayjs(d).format('DD MMM YYYY') : '—'}
           </span>
@@ -159,12 +142,12 @@ const PurchaseDashboard = () => {
   return (
     <div>
       {/* A) WELCOME ROW */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
+      <div style={{ marginBottom: 22 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
           Good {greetingTime}, {firstName}
         </h1>
-        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-          Purchase & Procurement · {formattedDate}
+        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+          Procurement & Supply Chain Console · {formattedDate}
         </div>
       </div>
 

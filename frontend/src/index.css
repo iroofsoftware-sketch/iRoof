@@ -1,76 +1,156 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #0b2e59;
+  --navy-dark: #081a36;
+  --navy-light: #164278;
+  --navy-subtle: #f0f5fa;
+  --gold: #c9940a;
+  --gold-hover: #b08107;
+  --gold-subtle: #fef9ea;
+  --gold-border: rgba(201, 148, 10, 0.25);
+  
+  --bg-app: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1f5f9;
+  
+  --border-hairline: #f1f5f9;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-disabled: #94a3b8;
+  
+  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #111827;
-  background: #f3f6f9;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  background-color: var(--bg-app);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
 #root {
   min-height: 100vh;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Page layout */
+/* Number formatting alignment */
+.tabular-nums, .stat-card__value, td, th {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ref Code Monospace Badges */
+.ref-badge {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--navy-subtle);
+  border: 1px solid rgba(11, 46, 89, 0.15);
+  padding: 2.5px 8px;
+  border-radius: 4px;
+  letter-spacing: -0.01em;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* Page Header Layout */
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #dde3ea;
-}
-.page-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #111827;
-  letter-spacing: -0.01em;
-}
-.page-subtitle {
-  font-size: 13px;
-  color: #6b7280;
-  margin-top: 2px;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-/* Stat card */
+.page-title {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+/* Stat Cards (High-Precision Enterprise Metrics) */
 .stat-card {
-  background: #fff;
-  border: 1px solid #dde3ea;
-  border-radius: 8px;
-  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
-  transition: box-shadow 0.15s;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(15, 23, 42, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
 }
-.stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+
+.stat-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.03);
+  transform: translateY(-1px);
+}
+
 .stat-card__label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #6b7280;
-  text-transform: none;
-  letter-spacing: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
+
 .stat-card__value {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
-  color: #111827;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
+
 .stat-card__meta {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  line-height: 1.35;
 }
+
 .stat-card__icon {
   width: 36px;
   height: 36px;
@@ -79,16 +159,25 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 16px;
+  border: 1px solid transparent;
+  flex-shrink: 0;
 }
 
-/* Status badges — dot + label style */
+/* Status Badges (Enterprise Pill Badges with Glow Indicators) */
 .status-dot {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  padding: 2.5px 9px;
+  border-radius: 9999px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
+
 .status-dot::before {
   content: '';
   width: 6px;
@@ -96,59 +185,230 @@ body {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.status-new::before       { background: #3b82f6; }
-.status-visited::before   { background: #8b5cf6; }
-.status-estimated::before { background: #f59e0b; }
-.status-approved::before  { background: #10b981; }
-.status-rejected::before  { background: #ef4444; }
-.status-completed::before { background: #6b7280; }
 
-/* Section card wrapper */
-.content-card {
-  background: #fff;
-  border: 1px solid #dde3ea;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
-  overflow: hidden;
-  margin-bottom: 16px;
+/* Status: Draft / Pending / Unassigned */
+.status-draft, .status-pending {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
 }
+.status-draft::before, .status-pending::before {
+  background: #94a3b8;
+}
+
+/* Status: Sent / Active / Blue */
+.status-sent, .status-active, .status-new {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.status-sent::before, .status-active::before, .status-new::before {
+  background: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Status: Paid / Delivered / Approved / Completed */
+.status-paid, .status-delivered, .status-approved, .status-completed {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+.status-paid::before, .status-delivered::before, .status-approved::before, .status-completed::before {
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+/* Status: Partial / Scheduled / Warning */
+.status-partial, .status-scheduled, .status-on_hold, .status-estimated {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+.status-partial::before, .status-scheduled::before, .status-on_hold::before, .status-estimated::before {
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+/* Status: Overdue / Cancelled / Rejected */
+.status-overdue, .status-cancelled, .status-rejected {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.status-overdue::before, .status-cancelled::before, .status-rejected::before {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* Status: Acknowledged / Visited (Purple) */
+.status-acknowledged, .status-visited {
+  background: #faf5ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+.status-acknowledged::before, .status-visited::before {
+  background: #a855f7;
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+}
+
+/* Content Card Wrappers */
+.content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(15, 23, 42, 0.02);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
 .content-card__header {
-  padding: 14px 20px;
-  border-bottom: 1px solid #dde3ea;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: #ffffff;
 }
-.content-card__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-}
-.content-card__body { padding: 20px; }
 
-/* Ant Design table tweaks */
-.ant-table-wrapper .ant-table {
-  font-size: 13px !important;
+.content-card__title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
 }
+
+.content-card__body {
+  padding: 22px;
+}
+
+/* Filter Bar Polish */
+.filter-bar {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 18px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Ant Design Table Enterprise Refinements */
+.ant-table-wrapper {
+  border-radius: 8px;
+}
+
+.ant-table-wrapper .ant-table {
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
+  color: var(--text-primary) !important;
+}
+
 .ant-table-thead > tr > th {
   font-size: 11px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-  color: #6b7280 !important;
+  letter-spacing: 0.05em !important;
+  color: #64748b !important;
   background: #f8fafc !important;
-  padding: 10px 16px !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  padding: 12px 18px !important;
 }
+
 .ant-table-tbody > tr > td {
-  padding: 12px 16px !important;
-  border-bottom: 1px solid #f0f4f8 !important;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: var(--text-primary);
+  transition: background 0.15s;
 }
+
+.ant-table-tbody > tr:hover > td {
+  background: #fbfdff !important;
+}
+
 .ant-table-tbody > tr:last-child > td {
   border-bottom: none !important;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+/* Custom Minimalist Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Ant Drawer & Modal Refinement */
+.ant-drawer-header {
+  border-bottom: 1px solid var(--border-subtle) !important;
+  padding: 18px 24px !important;
+}
+
+.ant-drawer-body {
+  padding: 24px !important;
+}
+
+.ant-drawer-footer {
+  border-top: 1px solid var(--border-subtle) !important;
+  padding: 14px 24px !important;
+  background: #fbfcfe !important;
+}
+
+.ant-modal-header {
+  border-bottom: 1px solid var(--border-subtle) !important;
+  padding-bottom: 14px !important;
+  margin-bottom: 18px !important;
+}
+
+.ant-modal-title {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  letter-spacing: -0.015em !important;
+}
+
+/* Button & Control Micro-interactions */
+.ant-btn {
+  font-family: var(--font-sans) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  border-radius: 6px !important;
+  transition: all 0.15s ease !important;
+}
+
+.ant-btn-primary {
+  background: var(--navy) !important;
+  border-color: var(--navy) !important;
+  box-shadow: 0 1px 2px rgba(11, 46, 89, 0.15) !important;
+}
+
+.ant-btn-primary:hover {
+  background: var(--navy-light) !important;
+  border-color: var(--navy-light) !important;
+  box-shadow: 0 2px 6px rgba(11, 46, 89, 0.22) !important;
+}
+
+.ant-input, .ant-select-selector, .ant-picker {
+  font-family: var(--font-sans) !important;
+  border-radius: 6px !important;
+  border-color: var(--border-strong) !important;
+}
+
+.ant-input:focus, .ant-input-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  border-color: var(--navy) !important;
+  box-shadow: 0 0 0 3px rgba(11, 46, 89, 0.12) !important;
+}

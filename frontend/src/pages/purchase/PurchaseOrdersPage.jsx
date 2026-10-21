@@ -253,26 +253,16 @@ const PurchaseOrdersPage = () => {
       title: 'PO REF',
       dataIndex: 'refCode',
       key: 'refCode',
-      width: 130,
-      render: (val) => (
-        <span
-          style={{
-            fontFamily: 'monospace',
-            fontWeight: 600,
-            color: '#0b315d',
-            fontSize: 12
-          }}
-        >
-          {val || '—'}
-        </span>
-      )
+      width: 140,
+      render: (val) => <span className="ref-badge">{val || '—'}</span>
     },
     {
       title: 'PURCHASE REQUEST',
       dataIndex: 'purchaseRequestId',
       key: 'purchaseRequestId',
+      width: 140,
       render: (pr) => (
-        <span style={{ fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>
+        <span className="ref-badge" style={{ fontSize: 11, opacity: 0.85 }}>
           {pr?.refCode || '—'}
         </span>
       )
@@ -283,11 +273,11 @@ const PurchaseOrdersPage = () => {
       key: 'supplierId',
       render: (supp) => (
         <div>
-          <span style={{ fontWeight: 500, color: '#111827' }}>
+          <span style={{ fontWeight: 600, color: '#0f172a' }}>
             {supp?.name || 'Assigned Supplier'}
           </span>
           {supp?.phone && (
-            <div style={{ fontSize: 11, color: '#6b7280' }}>{supp.phone}</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>{supp.phone}</div>
           )}
         </div>
       )
@@ -296,6 +286,7 @@ const PurchaseOrdersPage = () => {
       title: 'EXPECTED DELIVERY',
       dataIndex: 'expectedDelivery',
       key: 'expectedDelivery',
+      width: 140,
       render: (val, r) => {
         const isPastDue =
           val &&
@@ -305,10 +296,11 @@ const PurchaseOrdersPage = () => {
         return (
           <span
             style={{
-              fontSize: 12,
-              color: isPastDue ? '#b91c1c' : '#6b7280',
+              fontSize: 12.5,
+              color: isPastDue ? '#b91c1c' : '#64748b',
               fontWeight: isPastDue ? 600 : 400
             }}
+            className="tabular-nums"
           >
             {val ? dayjs(val).format('DD MMM YYYY') : '—'}
           </span>
@@ -319,8 +311,9 @@ const PurchaseOrdersPage = () => {
       title: 'GRAND TOTAL',
       dataIndex: 'grandTotal',
       key: 'grandTotal',
+      align: 'right',
       render: (val) => (
-        <span style={{ fontWeight: 600, color: '#111827', fontSize: 13 }}>
+        <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }} className="tabular-nums">
           ₹ {Number(val || 0).toLocaleString('en-IN')}
         </span>
       )
@@ -329,27 +322,12 @@ const PurchaseOrdersPage = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (status) => {
         const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
         return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 12,
-              fontWeight: 500
-            }}
-          >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                backgroundColor: cfg.color
-              }}
-            />
-            <span style={{ color: cfg.color }}>{cfg.label}</span>
+          <span className={`status-dot status-${status}`}>
+            <span style={{ textTransform: 'capitalize' }}>{cfg.label}</span>
           </span>
         );
       }
@@ -475,19 +453,7 @@ const PurchaseOrdersPage = () => {
       </Row>
 
       {/* ── FILTER BAR ── */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #dde3ea',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}
-      >
+      <div className="filter-bar">
         <Input
           prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
           placeholder="Search by PO ref, supplier, or PR..."

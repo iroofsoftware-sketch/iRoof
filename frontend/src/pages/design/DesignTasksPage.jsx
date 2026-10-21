@@ -111,24 +111,21 @@ const DesignTasksPage = () => {
       title: 'REF #',
       dataIndex: 'refCode',
       key: 'refCode',
-      width: 120,
-      render: (val) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d', fontSize: 12 }}>
-          {val || 'DT-TASK'}
-        </span>
-      )
+      width: 140,
+      render: (val) => <span className="ref-badge">{val || 'DT-TASK'}</span>
     },
     {
       title: 'WORK ORDER',
       key: 'wo',
+      width: 140,
       render: (_, r) => (
-        <Button
-          type="link"
-          style={{ padding: 0, fontFamily: 'monospace', fontWeight: 600 }}
+        <span
+          className="ref-badge"
+          style={{ cursor: 'pointer', fontSize: 11, opacity: 0.85 }}
           onClick={() => navigate(`/projectmanager/workorders/${r.workOrderId?._id}`)}
         >
           {r.workOrderId?.refCode || 'WO-REF'}
-        </Button>
+        </span>
       )
     },
     {
@@ -136,10 +133,10 @@ const DesignTasksPage = () => {
       key: 'client',
       render: (_, r) => (
         <div>
-          <span style={{ fontWeight: 500, color: '#111827' }}>
+          <span style={{ fontWeight: 600, color: '#0f172a' }}>
             {r.workOrderId?.clientName || 'General Client'}
           </span>
-          <div style={{ fontSize: 12, color: '#6b7280' }}>{r.title}</div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>{r.title}</div>
         </div>
       )
     },
@@ -147,12 +144,13 @@ const DesignTasksPage = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (status) => {
         const cfg = STATUS_TAGS[status] || STATUS_TAGS.pending;
         return (
-          <Tag color={cfg.color} style={{ borderRadius: 4, fontWeight: 500 }}>
-            {cfg.label}
-          </Tag>
+          <span className={`status-dot status-${status}`}>
+            <span style={{ textTransform: 'capitalize' }}>{cfg.label}</span>
+          </span>
         );
       }
     },
@@ -199,19 +197,7 @@ const DesignTasksPage = () => {
       </div>
 
       {/* ── FILTER BAR ── */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #dde3ea',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}
-      >
+      <div className="filter-bar">
         <Input
           prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
           placeholder="Search by ref, client, or drawing title..."

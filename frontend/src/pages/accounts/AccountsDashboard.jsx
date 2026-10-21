@@ -66,18 +66,14 @@ const AccountsDashboard = () => {
       title: 'INVOICE #',
       dataIndex: 'refCode',
       key: 'refCode',
-      width: 140,
-      render: (t) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>
-          {t}
-        </span>
-      )
+      width: 150,
+      render: (t) => <span className="ref-badge">{t}</span>
     },
     {
       title: 'CLIENT',
       dataIndex: 'clientName',
       key: 'clientName',
-      render: (t) => <span style={{ fontWeight: 500, color: '#111827' }}>{t}</span>
+      render: (t) => <span style={{ fontWeight: 600, color: '#0f172a' }}>{t}</span>
     },
     {
       title: 'GRAND TOTAL',
@@ -85,7 +81,7 @@ const AccountsDashboard = () => {
       key: 'grandTotal',
       align: 'right',
       render: (val) => (
-        <span style={{ fontWeight: 600, color: '#111827' }}>
+        <span style={{ fontWeight: 600, color: '#0f172a' }} className="tabular-nums">
           ₹ {Number(val || 0).toLocaleString('en-IN')}
         </span>
       )
@@ -94,6 +90,7 @@ const AccountsDashboard = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (st, record) => {
         const isOverdue =
           st !== 'paid' &&
@@ -101,15 +98,6 @@ const AccountsDashboard = () => {
           record.dueDate &&
           new Date(record.dueDate) < new Date();
         const displayStatus = isOverdue ? 'overdue' : st;
-
-        const colorMap = {
-          draft: 'default',
-          sent: 'blue',
-          partial: 'orange',
-          paid: 'success',
-          overdue: 'error',
-          cancelled: 'default'
-        };
 
         return (
           <span className={`status-dot status-${displayStatus}`}>
@@ -122,6 +110,7 @@ const AccountsDashboard = () => {
       title: 'DUE DATE',
       dataIndex: 'dueDate',
       key: 'dueDate',
+      width: 130,
       render: (d, record) => {
         const isOverdue =
           record.status !== 'paid' &&
@@ -129,7 +118,7 @@ const AccountsDashboard = () => {
           d &&
           new Date(d) < new Date();
         return (
-          <span style={{ color: isOverdue ? '#b91c1c' : '#6b7280', fontSize: 12, fontWeight: isOverdue ? 600 : 400 }}>
+          <span style={{ color: isOverdue ? '#b91c1c' : '#64748b', fontSize: 12.5, fontWeight: isOverdue ? 600 : 400 }} className="tabular-nums">
             {d ? dayjs(d).format('DD MMM YYYY') : '—'}
           </span>
         );
@@ -142,12 +131,12 @@ const AccountsDashboard = () => {
   return (
     <div>
       {/* A) WELCOME ROW */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
+      <div style={{ marginBottom: 22 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
           Good {greetingTime}, {firstName}
         </h1>
-        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-          Accounts & Finance · {formattedDate}
+        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+          Commercial Finance & Ledger Console · {formattedDate}
         </div>
       </div>
 

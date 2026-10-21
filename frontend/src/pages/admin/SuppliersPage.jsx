@@ -181,10 +181,12 @@ const SuppliersPage = () => {
       key: 'name',
       render: (val, r) => (
         <div>
-          <span style={{ fontWeight: 600, color: '#0b315d' }}>{val}</span>
+          <span style={{ fontWeight: 600, color: '#0f172a' }}>{val}</span>
           {r.gstin && (
-            <div style={{ fontSize: 11, color: '#6b7280', fontFamily: 'monospace' }}>
-              GST: {r.gstin}
+            <div style={{ marginTop: 3 }}>
+              <span className="ref-badge" style={{ fontSize: 10.5, padding: '1px 6px' }}>
+                GST: {r.gstin}
+              </span>
             </div>
           )}
         </div>
@@ -314,19 +316,7 @@ const SuppliersPage = () => {
       </div>
 
       {/* ── FILTER BAR ── */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #dde3ea',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}
-      >
+      <div className="filter-bar">
         <Input
           prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
           placeholder="Search by supplier name, contact, material..."
