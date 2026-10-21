@@ -35,7 +35,7 @@ import {
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
-const { Header, Sider, Content } = Layout;
+const { Header, Sider, Content, Footer } = Layout;
 
 export const roleDepartmentTitles = {
   admin: 'Administration',
@@ -270,78 +270,110 @@ const RoleLayout = () => {
         </div>
       </div>
 
-      {/* USER BLOCK */}
-      <div
-        style={{
-          padding: '14px 16px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.07)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'rgba(0, 0, 0, 0.15)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
-          <Avatar
-            size={32}
-            style={{
-              background: '#c9940a',
-              color: '#ffffff',
-              fontWeight: 700,
-              flexShrink: 0,
-              border: '1.5px solid rgba(255, 255, 255, 0.2)',
-              fontSize: 12
-            }}
-          >
-            {userInitials}
-          </Avatar>
-          {!collapsed && (
-            <div style={{ overflow: 'hidden', lineHeight: 1.25 }}>
-              <div
-                style={{
-                  color: '#ffffff',
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}
-              >
-                {user?.name || 'Staff User'}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span
+      {/* USER BLOCK & FOOTER */}
+      <div>
+        <div
+          style={{
+            padding: '14px 16px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'rgba(0, 0, 0, 0.15)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+            <Avatar
+              size={32}
+              style={{
+                background: '#c9940a',
+                color: '#ffffff',
+                fontWeight: 700,
+                flexShrink: 0,
+                border: '1.5px solid rgba(255, 255, 255, 0.2)',
+                fontSize: 12
+              }}
+            >
+              {userInitials}
+            </Avatar>
+            {!collapsed && (
+              <div style={{ overflow: 'hidden', lineHeight: 1.25 }}>
+                <div
                   style={{
-                    background: 'rgba(255, 255, 255, 0.10)',
-                    color: 'rgba(255, 255, 255, 0.75)',
-                    padding: '1px 5px',
-                    borderRadius: 3,
-                    fontSize: 9.5,
+                    color: '#ffffff',
+                    fontSize: 12.5,
                     fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em'
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
                   }}
                 >
-                  {user?.role || role}
-                </span>
+                  {user?.name || 'Staff User'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <span
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.10)',
+                      color: 'rgba(255, 255, 255, 0.75)',
+                      padding: '1px 5px',
+                      borderRadius: 3,
+                      fontSize: 9.5,
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
+                    }}
+                  >
+                    {user?.role || role}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
+          </div>
+
+          {!collapsed && (
+            <Button
+              type="text"
+              icon={<LogoutOutlined />}
+              onClick={handleLogout}
+              title="Sign Out"
+              style={{
+                color: 'rgba(255,255,255,0.45)',
+                padding: 4,
+                fontSize: 14
+              }}
+              className="sidebar-logout-btn"
+            />
           )}
         </div>
 
         {!collapsed && (
-          <Button
-            type="text"
-            icon={<LogoutOutlined />}
-            onClick={handleLogout}
-            title="Sign Out"
+          <div
             style={{
-              color: 'rgba(255,255,255,0.45)',
-              padding: 4,
-              fontSize: 14
+              padding: '6px 16px 10px',
+              fontSize: 10.5,
+              color: 'rgba(255, 255, 255, 0.35)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+              background: 'rgba(0, 0, 0, 0.22)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4
             }}
-            className="sidebar-logout-btn"
-          />
+          >
+            <span>Powered by</span>
+            <a
+              href="https://auxzons.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: '#c9940a',
+                fontWeight: 600,
+                textDecoration: 'none'
+              }}
+            >
+              Auxzon
+            </a>
+          </div>
         )}
       </div>
     </div>
@@ -480,13 +512,39 @@ const RoleLayout = () => {
             background: '#f8fafc',
             padding: '24px 28px',
             overflowY: 'auto',
-            minHeight: 'calc(100vh - 58px)'
+            minHeight: 'calc(100vh - 105px)'
           }}
         >
           <div style={{ maxWidth: 1440, margin: '0 auto' }}>
             <Outlet />
           </div>
         </Content>
+
+        {/* FOOTER */}
+        <Footer
+          style={{
+            background: '#f8fafc',
+            textAlign: 'center',
+            padding: '12px 28px 18px',
+            fontSize: 11.5,
+            color: '#94a3b8',
+            borderTop: '1px solid #edf2f7'
+          }}
+        >
+          <span>I Roofing Enterprises · </span>
+          <a
+            href="https://auxzons.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: '#0b2e59',
+              fontWeight: 600,
+              textDecoration: 'none'
+            }}
+          >
+            by Auxzon
+          </a>
+        </Footer>
       </Layout>
 
       <style>{`
