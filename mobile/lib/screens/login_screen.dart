@@ -15,10 +15,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: 'site@iroofing.in');
-  final _passwordController = TextEditingController(text: 'admin123');
+  // Pre-filled with Site Visitor seed credentials for rapid field access
+  final _emailController = TextEditingController(text: 'sitevisitor@iroofing.com');
+  final _passwordController = TextEditingController(text: 'Site@123');
   bool _loading = false;
   bool _obscurePassword = true;
+  String _activeRoleLabel = 'Site Visitor';
 
   @override
   void dispose() {
@@ -28,25 +30,30 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _quickFillRole(String role) {
-    if (role == 'admin') {
-      _emailController.text = 'admin@iroofing.in';
-      _passwordController.text = 'admin123';
-    } else if (role == 'pm') {
-      _emailController.text = 'pm@iroofing.in';
-      _passwordController.text = 'admin123';
-    } else {
-      _emailController.text = 'site@iroofing.in';
-      _passwordController.text = 'admin123';
-    }
+    setState(() {
+      if (role == 'admin') {
+        _emailController.text = 'admin@iroofing.com';
+        _passwordController.text = 'Admin@123';
+        _activeRoleLabel = 'Admin';
+      } else if (role == 'pm') {
+        _emailController.text = 'pm@iroofing.com';
+        _passwordController.text = 'Pm@123';
+        _activeRoleLabel = 'Project Manager';
+      } else {
+        _emailController.text = 'sitevisitor@iroofing.com';
+        _passwordController.text = 'Site@123';
+        _activeRoleLabel = 'Site Visitor';
+      }
+    });
   }
 
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email and password')),
+        const SnackBar(content: Text('Please enter email')),
       );
       return;
     }
@@ -56,12 +63,11 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final user = await ApiService.login(email, password);
       if (!mounted) return;
-
       _navigateToHome(user);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: ${e.toString()}')),
+        SnackBar(content: Text('Login notice: ${e.toString()}')),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -95,10 +101,14 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        title: const Text(
+          'iRoofing Enterprise',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white70),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.white70),
-            tooltip: 'Server Connection Settings',
+            tooltip: 'Server Gateway Settings',
+            icon: const Icon(Icons.settings_outlined, color: AppColors.accentGold),
             onPressed: () => ServerConfigDialog.show(context),
           ),
         ],
@@ -106,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -115,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Image.asset(
                     'assets/logos/iroofing_wordmark_white_small.png',
-                    height: 46,
+                    height: 48,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) => const Text(
                       'I ROOFING',
@@ -130,12 +140,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Enterprise Mobile Suite',
+                  'ARCHITECTURAL ROOFING SYSTEMS',
                   style: TextStyle(
                     color: AppColors.accentGold,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.2,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -145,17 +155,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(color: Colors.white54, fontSize: 11.5),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
 
                 // ── CARD LOGIN FORM ──
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: const [
                       BoxShadow(
-                        color: Colors.black26,
+                        color: Colors.black38,
                         blurRadius: 20,
                         offset: Offset(0, 8),
                       ),
@@ -164,20 +174,40 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        'Authorized Sign In',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Authorized Sign In',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentGold.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _activeRoleLabel.toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primaryNavy,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       const Text(
                         'Site Visitors · Project Managers · Admins',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
                       // Email Field
                       TextField(
@@ -185,12 +215,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           labelText: 'Work Email',
-                          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primaryNavy),
+                          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primaryNavy, size: 20),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
                       // Password Field
                       TextField(
@@ -198,11 +228,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscureText: _obscurePassword,
                         decoration: InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primaryNavy),
+                          prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primaryNavy, size: 20),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword ? Icons.visibility_off : Icons.visibility,
                               color: Colors.grey,
+                              size: 20,
                             ),
                             onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                           ),
@@ -210,11 +241,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         ),
                       ),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 20),
 
                       // Sign In Button
                       ElevatedButton(
-                        onPressed: _loading ? null : _handleLogin,
+                        onPressed: _loading ? null : () => _handleLogin(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryNavy,
                           foregroundColor: Colors.white,
@@ -230,17 +261,17 @@ class _LoginScreenState extends State<LoginScreen> {
                               )
                             : const Text(
                                 'Sign In to Workspace',
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                               ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
                       const Divider(height: 1),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
 
                       // Quick Account Switcher
                       const Text(
-                        'Select Test Account:',
+                        'Quick Role Switcher (Auto-fills credentials):',
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 8),
@@ -251,10 +282,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               onPressed: () => _quickFillRole('site'),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 8),
-                                side: const BorderSide(color: AppColors.accentGold),
+                                side: BorderSide(
+                                  color: _activeRoleLabel == 'Site Visitor' ? AppColors.accentGold : AppColors.border,
+                                  width: _activeRoleLabel == 'Site Visitor' ? 1.8 : 1.0,
+                                ),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
-                              child: const Text('Site Visitor', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primaryNavy)),
+                              child: const Text('Site Visitor', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -263,10 +297,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               onPressed: () => _quickFillRole('pm'),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 8),
-                                side: const BorderSide(color: AppColors.border),
+                                side: BorderSide(
+                                  color: _activeRoleLabel == 'Project Manager' ? AppColors.accentGold : AppColors.border,
+                                  width: _activeRoleLabel == 'Project Manager' ? 1.8 : 1.0,
+                                ),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
-                              child: const Text('PM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primaryNavy)),
+                              child: const Text('PM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -275,10 +312,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               onPressed: () => _quickFillRole('admin'),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 8),
-                                side: const BorderSide(color: AppColors.border),
+                                side: BorderSide(
+                                  color: _activeRoleLabel == 'Admin' ? AppColors.accentGold : AppColors.border,
+                                  width: _activeRoleLabel == 'Admin' ? 1.8 : 1.0,
+                                ),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
-                              child: const Text('Admin', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primaryNavy)),
+                              child: const Text('Admin', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
                             ),
                           ),
                         ],
@@ -287,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 28),
 
                 // ── BRAND FOOTER (AUXZON) ──
                 Row(

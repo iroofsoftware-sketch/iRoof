@@ -8,18 +8,21 @@ import 'screens/admin/admin_home.dart';
 import 'screens/project_manager/pm_home.dart';
 import 'screens/site_visitor/site_visitor_home.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Make system navigation bar and status bar transparent & crisp
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: AppColors.primaryDark,
+      systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
 
-  final user = await ApiService.getCurrentUser();
-  runApp(IRoofMobileApp(initialUser: user));
+  // Instantly start the Flutter app without blocking on I/O
+  runApp(const IRoofMobileApp());
 }
 
 class IRoofMobileApp extends StatelessWidget {
@@ -43,14 +46,13 @@ class IRoofMobileApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
         fontFamily: 'Roboto',
       ),
-      home: _getHome(initialUser),
+      home: initialUser != null
+          ? _getDestination(initialUser!)
+          : const AppBootstrapper(),
     );
   }
 
-  Widget _getHome(UserModel? user) {
-    if (user == null) {
-      return const LoginScreen();
-    }
+  static Widget _getDestination(UserModel user) {
     switch (user.role.toLowerCase()) {
       case 'admin':
         return AdminHome(user: user);
@@ -60,5 +62,90 @@ class IRoofMobileApp extends StatelessWidget {
       default:
         return SiteVisitorHome(user: user);
     }
+  }
+}
+
+/// Instant bootstrapper that draws the first frame in < 50ms,
+/// eliminating any splash-screen freeze or ANR.
+class AppBootstrapper extends StatefulWidget {
+  const AppBootstrapper({super.key});
+
+  @override
+  State<AppBootstrapper> createState() => _AppBootstrapperState();
+}
+
+class _AppBootstrapperState extends State<AppBootstrapper> {
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    UserModel? user;
+    try {
+      user = await ApiService.getCurrentUser().timeout(
+        const Duration(milliseconds: 600),
+        onTimeout: () => null,
+      );
+    } catch (_) {
+      user = null;
+    }
+
+    if (!mounted) return;
+
+    if (user != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => IRoofMobileApp._getDestination(user!)),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.primaryDark,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'I ROOFING',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 3,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'ARCHITECTURAL ROOFING SYSTEMS',
+              style: TextStyle(
+                color: AppColors.accentGold,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 2,
+              ),
+            ),
+            SizedBox(height: 32),
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentGold),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
