@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../services/pin_auth_service.dart';
 import '../common/server_config_dialog.dart';
 import '../common/work_order_detail_screen.dart';
+import '../common/profile_screen.dart';
 import '../notifications_sheet.dart';
 import '../login_screen.dart';
 
@@ -137,6 +138,7 @@ class _AdminTabScaffoldState extends State<AdminTabScaffold> {
                 _buildWorkOrdersTab(),
                 _buildEnquiriesTab(),
                 _buildTeamTab(),
+                ProfileScreen(user: widget.user),
               ],
             ),
       bottomNavigationBar: BottomNavigationBar(
@@ -152,6 +154,7 @@ class _AdminTabScaffoldState extends State<AdminTabScaffold> {
           BottomNavigationBarItem(icon: Icon(Icons.engineering_outlined), activeIcon: Icon(Icons.engineering), label: 'Work Orders'),
           BottomNavigationBarItem(icon: Icon(Icons.contact_mail_outlined), activeIcon: Icon(Icons.contact_mail), label: 'Enquiries'),
           BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'Team'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );

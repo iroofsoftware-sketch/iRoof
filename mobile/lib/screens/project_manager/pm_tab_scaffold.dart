@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/api_service.dart';
-import '../../services/pin_auth_service.dart';
 import '../common/server_config_dialog.dart';
 import '../common/work_order_detail_screen.dart';
+import '../common/profile_screen.dart';
 import '../notifications_sheet.dart';
-import '../login_screen.dart';
 
 class PmTabScaffold extends StatefulWidget {
   final UserModel user;
@@ -62,34 +61,6 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
     setState(() {
       _unreadNotifications = data['unreadCount'] ?? 0;
     });
-  }
-
-  void _handleSignOut() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Sign Out'),
-        content: const Text('Are you sure you want to log out of PM workspace?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Log Out', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await ApiService.clearCurrentUser();
-      if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
   }
 
   @override
@@ -418,112 +389,7 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
 
   // ── TAB 4: PM PROFILE & SETTINGS ──
   Widget _buildProfileTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            children: [
-              const CircleAvatar(
-                radius: 34,
-                backgroundColor: AppColors.primaryNavy,
-                child: Icon(Icons.engineering, size: 36, color: Colors.white),
-              ),
-              const SizedBox(height: 12),
-              Text(widget.user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
-              const SizedBox(height: 4),
-              Text(widget.user.email, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                child: const Text('PROJECT MANAGER', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.blue)),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
-          child: ListTile(
-            leading: const Icon(Icons.lock_clock_outlined, color: AppColors.primaryNavy),
-            title: const Text('4-Digit Security PIN', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
-            subtitle: const Text('Set quick access code for mobile workspace', style: TextStyle(fontSize: 11.5)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              final pinCtrl = TextEditingController();
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Quick PIN Setup'),
-                  content: TextField(
-                    controller: pinCtrl,
-                    keyboardType: TextInputType.number,
-                    maxLength: 4,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'New 4-Digit PIN', border: OutlineInputBorder()),
-                  ),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryNavy),
-                      onPressed: () async {
-                        if (pinCtrl.text.length == 4) {
-                          await PinAuthService.setSecurityPin(pinCtrl.text);
-                          if (ctx.mounted) {
-                            Navigator.pop(ctx);
-                          }
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN Saved!')));
-                          }
-                        }
-                      },
-                      child: const Text('Save PIN', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
-          child: ListTile(
-            leading: const Icon(Icons.dns_outlined, color: AppColors.primaryNavy),
-            title: const Text('Server Gateway Configuration', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
-            subtitle: const Text('Manage backend API endpoint', style: TextStyle(fontSize: 11.5)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => ServerConfigDialog.show(context),
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        OutlinedButton.icon(
-          onPressed: _handleSignOut,
-          icon: const Icon(Icons.logout, color: Colors.red),
-          label: const Text('Sign Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.red),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-      ],
-    );
+    return ProfileScreen(user: widget.user);
   }
 
   Widget _buildMetricCard(String label, String value, Color color) {

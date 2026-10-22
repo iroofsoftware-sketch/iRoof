@@ -599,4 +599,90 @@ class ApiService {
       ).timeout(const Duration(seconds: 3));
     } catch (_) {}
   }
+
+  // ── UPDATE PROFILE ──
+  static Future<UserModel> updateProfile({
+    required String name,
+    required String email,
+    String? phone,
+    String? designation,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final currentUser = await getCurrentUser();
+
+    final payload = {
+      'name': name.trim(),
+      'email': email.trim(),
+      if (phone != null) 'phone': phone.trim(),
+      if (designation != null) 'designation': designation.trim(),
+    };
+
+    try {
+      final res = await http.put(
+        Uri.parse('$baseUrl/auth/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (currentUser?.token != null) 'Authorization': 'Bearer ${currentUser!.token}',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 5));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final updatedUser = UserModel.fromJson(
+          data['user'],
+          token: currentUser?.token,
+        );
+        await saveCurrentUser(updatedUser);
+        return updatedUser;
+      } else {
+        final err = jsonDecode(res.body);
+        throw Exception(err['message'] ?? 'Failed to update profile');
+      }
+    } catch (e) {
+      if (e is Exception && e.toString().contains('Failed to update')) rethrow;
+      // Offline fallback: save locally
+      final updatedUser = UserModel(
+        id: currentUser?.id ?? 'offline_id',
+        name: name,
+        email: email,
+        role: currentUser?.role ?? 'sitevisitor',
+        phone: phone,
+        designation: designation,
+        token: currentUser?.token,
+      );
+      await saveCurrentUser(updatedUser);
+      return updatedUser;
+    }
+  }
+
+  // ── CHANGE PASSWORD ──
+  static Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final baseUrl = await getBaseUrl();
+    final currentUser = await getCurrentUser();
+
+    final payload = {
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+    };
+
+    final res = await http.put(
+      Uri.parse('$baseUrl/auth/change-password'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (currentUser?.token != null) 'Authorization': 'Bearer ${currentUser!.token}',
+      },
+      body: jsonEncode(payload),
+    ).timeout(const Duration(seconds: 5));
+
+    if (res.statusCode == 200) {
+      return true;
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['message'] ?? 'Failed to change password');
+    }
+  }
 }

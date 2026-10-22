@@ -3,6 +3,8 @@ class UserModel {
   final String name;
   final String email;
   final String role;
+  final String? phone;
+  final String? designation;
   final String? token;
 
   UserModel({
@@ -10,6 +12,8 @@ class UserModel {
     required this.name,
     required this.email,
     required this.role,
+    this.phone,
+    this.designation,
     this.token,
   });
 
@@ -19,6 +23,8 @@ class UserModel {
       name: json['name'] ?? 'Staff User',
       email: json['email'] ?? '',
       role: json['role'] ?? 'sitevisitor',
+      phone: json['phone']?.toString(),
+      designation: json['designation']?.toString(),
       token: token ?? json['token'],
     );
   }
@@ -29,6 +35,8 @@ class UserModel {
       'name': name,
       'email': email,
       'role': role,
+      'phone': phone,
+      'designation': designation,
       'token': token,
     };
   }

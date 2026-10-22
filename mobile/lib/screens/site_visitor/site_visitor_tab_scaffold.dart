@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/api_service.dart';
-import '../../services/pin_auth_service.dart';
 import '../common/server_config_dialog.dart';
 import '../common/work_order_detail_screen.dart';
 import '../notifications_sheet.dart';
-import '../login_screen.dart';
 import 'site_visit_detail_screen.dart';
 import 'quick_estimator_screen.dart';
+import '../common/profile_screen.dart';
 
 class SiteVisitorTabScaffold extends StatefulWidget {
   final UserModel user;
@@ -61,103 +60,6 @@ class _SiteVisitorTabScaffoldState extends State<SiteVisitorTabScaffold> {
     setState(() {
       _unreadNotifications = data['unreadCount'] ?? 0;
     });
-  }
-
-  void _handleSignOut() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Sign Out'),
-        content: const Text('Are you sure you want to log out of your field session?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Log Out', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await ApiService.clearCurrentUser();
-      if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
-  }
-
-  void _showPinSetupDialog() async {
-    final pinController = TextEditingController();
-    final isEnabled = await PinAuthService.isPinEnabled();
-
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Quick Security PIN'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isEnabled
-                  ? 'A 4-digit PIN is currently active for quick unlocking.'
-                  : 'Set a 4-digit PIN for instant access on site without typing your password every time:',
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: pinController,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'New 4-Digit PIN',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          if (isEnabled)
-            TextButton(
-              onPressed: () async {
-                await PinAuthService.disablePin();
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN security disabled')));
-                }
-              },
-              child: const Text('Disable PIN', style: TextStyle(color: Colors.red)),
-            ),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryNavy),
-            onPressed: () async {
-              final pin = pinController.text.trim();
-              if (pin.length == 4) {
-                await PinAuthService.setSecurityPin(pin);
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('4-Digit Security PIN set!')));
-                }
-              }
-            },
-            child: const Text('Save PIN', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -404,81 +306,6 @@ class _SiteVisitorTabScaffoldState extends State<SiteVisitorTabScaffold> {
 
   // ── TAB 4: PROFILE & SECURITY PIN ──
   Widget _buildProfileTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            children: [
-              const CircleAvatar(
-                radius: 34,
-                backgroundColor: AppColors.primaryNavy,
-                child: Icon(Icons.person, size: 36, color: Colors.white),
-              ),
-              const SizedBox(height: 12),
-              Text(widget.user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
-              const SizedBox(height: 4),
-              Text(widget.user.email, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: AppColors.accentGold.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
-                child: const Text('FIELD SITE VISITOR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primaryNavy)),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Quick PIN security tile
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
-          child: ListTile(
-            leading: const Icon(Icons.lock_clock_outlined, color: AppColors.primaryNavy),
-            title: const Text('4-Digit Security PIN / Quick Unlock', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
-            subtitle: const Text('Quick unlock on customer site without entering password', style: TextStyle(fontSize: 11.5)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _showPinSetupDialog,
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        // Server Configuration tile
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
-          child: ListTile(
-            leading: const Icon(Icons.dns_outlined, color: AppColors.primaryNavy),
-            title: const Text('Server Gateway Configuration', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
-            subtitle: const Text('Manage backend API endpoint & test connection', style: TextStyle(fontSize: 11.5)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => ServerConfigDialog.show(context),
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Sign Out Button
-        OutlinedButton.icon(
-          onPressed: _handleSignOut,
-          icon: const Icon(Icons.logout, color: Colors.red),
-          label: const Text('Sign Out from Mobile', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.red),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-      ],
-    );
+    return ProfileScreen(user: widget.user);
   }
 }
