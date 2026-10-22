@@ -12,6 +12,8 @@ import {
   Space,
   Modal,
   Table,
+  Radio,
+  Tooltip,
   message
 } from 'antd';
 import {
@@ -24,7 +26,20 @@ import {
   ColumnHeightOutlined,
   ForkOutlined,
   MinusOutlined,
-  CheckCircleOutlined
+  CheckCircleOutlined,
+  CloudDownloadOutlined,
+  SafetyCertificateOutlined,
+  AppstoreOutlined,
+  PictureOutlined,
+  CheckOutlined,
+  HomeOutlined,
+  BankOutlined,
+  CrownOutlined,
+  ShopOutlined,
+  TrophyOutlined,
+  BranchesOutlined,
+  BorderOuterOutlined,
+  CloudOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useReactToPrint } from 'react-to-print';
@@ -34,8 +49,11 @@ import { useAuthStore } from '../../store/authStore';
 import {
   autoEngineering,
   calculateEstimateCosts,
-  DEFAULT_RATES
+  DEFAULT_RATES,
+  BROCHURE_CATEGORIES
 } from '../../utils/engineeringEngine';
+import RainwaterDesignModal from '../../components/estimation/RainwaterDesignModal';
+import ConfidenceIntelligenceModal from '../../components/estimation/ConfidenceIntelligenceModal';
 
 const { Option } = Select;
 
@@ -91,9 +109,20 @@ const EstimationPage = () => {
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
 
-  // Selected Model State for the 5 interactive cards
-  const [selectedModel, setSelectedModel] = useState('Normal Cantilever');
+  // Selected Model & Category State (Master Spec Section 5)
+  const [selectedCategory, setSelectedCategory] = useState(BROCHURE_CATEGORIES[0]);
+  const [selectedModel, setSelectedModel] = useState(BROCHURE_CATEGORIES[0].modelKey);
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [withAngle, setWithAngle] = useState(false);
+
+  // Column & Beam Logic (Master Spec Section 11)
+  const [columnType, setColumnType] = useState('Single'); // 'Single', 'Braced', 'Box'
+  const [beamType, setBeamType] = useState('Standard');   // 'Standard', 'Braced', 'Box'
+
+  // Modals for Master Spec Sections 25 & 26
+  const [rainwaterModalVisible, setRainwaterModalVisible] = useState(false);
+  const [confidenceModalVisible, setConfidenceModalVisible] = useState(false);
+  const [drainageSpecs, setDrainageSpecs] = useState(null);
 
   // Calculation State
   const [calcResults, setCalcResults] = useState(null);
@@ -152,7 +181,7 @@ const EstimationPage = () => {
   }, [enquiryIdFromQuery, form]);
 
   // ──────────────────────────────────────────
-  // CALCULATION LOGIC (100% UNCHANGED)
+  // CALCULATION LOGIC
   // ──────────────────────────────────────────
   const runCalculation = useCallback(() => {
     const values = form.getFieldsValue();
@@ -170,7 +199,9 @@ const EstimationPage = () => {
       Number(length),
       Number(height || 0),
       Number(distance || 0),
-      angleMode
+      angleMode,
+      columnType,
+      beamType
     );
 
     setCalcResults(res);
@@ -181,7 +212,7 @@ const EstimationPage = () => {
     } else {
       setCosts(null);
     }
-  }, [form, selectedModel, withAngle, activeRates]);
+  }, [form, selectedModel, withAngle, columnType, beamType, activeRates]);
 
   // Trigger calculation on first render once form has initial values
   useEffect(() => {
@@ -204,6 +235,15 @@ const EstimationPage = () => {
         const isWithAngle = inputs.angleMode === 'With Angle';
         setWithAngle(isWithAngle);
         setSelectedModel(est.model || 'Normal Cantilever');
+        if (inputs.columnType) setColumnType(inputs.columnType);
+        if (inputs.beamType) setBeamType(inputs.beamType);
+        if (inputs.categoryName) {
+          const foundCat = BROCHURE_CATEGORIES.find(
+            (c) => c.name === inputs.categoryName && (inputs.subType ? c.subType === inputs.subType : true)
+          );
+          if (foundCat) setSelectedCategory(foundCat);
+        }
+        if (inputs.drainageSpecs) setDrainageSpecs(inputs.drainageSpecs);
 
         form.setFieldsValue({
           enquiryId: est.enquiryId?._id || est.enquiryId,
@@ -239,11 +279,13 @@ const EstimationPage = () => {
     const found = enquiries.find((e) => e._id === enqId);
     setSelectedEnquiry(found || null);
     if (found && found.roofType) {
-      const matched = MODEL_CARDS.find((m) =>
-        found.roofType.toLowerCase().includes(m.key.toLowerCase())
+      const matchedCat = BROCHURE_CATEGORIES.find((c) =>
+        found.roofType.toLowerCase().includes(c.name.toLowerCase()) ||
+        found.roofType.toLowerCase().includes(c.modelKey.toLowerCase())
       );
-      if (matched) {
-        setSelectedModel(matched.key);
+      if (matchedCat) {
+        setSelectedCategory(matchedCat);
+        setSelectedModel(matchedCat.modelKey);
       }
     }
   };
@@ -270,6 +312,12 @@ const EstimationPage = () => {
         height: Number(formVals.height || 0),
         distance: Number(formVals.distance || 0),
         angleMode,
+        columnType,
+        beamType,
+        categoryName: selectedCategory?.name || selectedModel,
+        subType: selectedCategory?.subType || 'Standard',
+        brochurePage: selectedCategory?.brochurePage || 'p10',
+        drainageSpecs,
         rates: activeRates
       },
       results: {
@@ -416,85 +464,260 @@ const EstimationPage = () => {
         </div>
       </div>
 
-      {/* ── SECTION 2: ENGINEERING MODEL (.content-card) ── */}
+      {/* ── SECTION 2: 16 BROCHURE CATEGORIES & ENGINEERING (Master Spec Sections 5 & 11) ── */}
       <div className="content-card">
-        <div className="content-card__header">
-          <span className="content-card__title">Select Model</span>
+        <div className="content-card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <span className="content-card__title">Structure Category Gallery</span>
+            <span style={{ fontSize: 12, color: '#64748b', marginLeft: 10 }}>
+              (16 Locked Brochure Categories · Master Spec Section 5)
+            </span>
+          </div>
+
+          {/* Contextual Intelligence & Hydraulic Tools (Master Spec Sections 25 & 26) */}
+          <Space size={8}>
+            <Button
+              size="small"
+              icon={<CloudDownloadOutlined />}
+              onClick={() => setRainwaterModalVisible(true)}
+              style={{
+                background: drainageSpecs ? '#e0f2fe' : '#ffffff',
+                borderColor: drainageSpecs ? '#0284c7' : '#cbd5e1',
+                color: drainageSpecs ? '#0369a1' : '#334155',
+                fontWeight: 600
+              }}
+            >
+              {drainageSpecs ? `Gutter ${drainageSpecs.gutterBase}mm (Adopted)` : 'Rainwater & Drainage'}
+            </Button>
+
+            <Button
+              size="small"
+              icon={<SafetyCertificateOutlined />}
+              onClick={() => setConfidenceModalVisible(true)}
+              style={{
+                borderColor: '#cbd5e1',
+                color: '#334155',
+                fontWeight: 600
+              }}
+            >
+              Confidence Check
+            </Button>
+          </Space>
         </div>
+
         <div className="content-card__body">
-          {/* 5 Model Selector Cards */}
-          <div
-            style={{
-              display: 'flex',
-              gap: 12,
-              flexWrap: 'wrap',
-              marginBottom: 16
-            }}
-          >
-            {MODEL_CARDS.map((m) => {
-              const isSelected = selectedModel === m.key;
+          {/* Category Filter Pills */}
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
+            {[
+              { key: 'all', label: 'All 16 Categories' },
+              { key: 'Arch Shed', label: 'Arch Sheds (SS)' },
+              { key: 'Cantilever', label: 'Cantilevers' },
+              { key: 'PEB', label: 'PEB & Multi-Bay' },
+              { key: 'Commercial', label: 'Commercial & Arena' },
+              { key: 'Institutional', label: 'Institutional & Shrines' },
+              { key: 'Residential', label: 'Residential & Bunker' }
+            ].map((f) => {
+              const active = categoryFilter === f.key;
               return (
-                <div
-                  key={m.key}
-                  onClick={() => {
-                    setSelectedModel(m.key);
-                    setTimeout(runCalculation, 0);
-                  }}
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setCategoryFilter(f.key)}
                   style={{
-                    flex: '1 1 150px',
-                    minWidth: 140,
-                    background: isSelected ? '#eff6ff' : '#ffffff',
-                    border: `1px solid ${isSelected ? '#0b315d' : '#dde3ea'}`,
-                    borderRadius: 8,
-                    padding: '16px 12px',
+                    padding: '4px 12px',
+                    borderRadius: 20,
+                    border: `1px solid ${active ? '#0b315d' : '#e2e8f0'}`,
+                    background: active ? '#0b315d' : '#f8fafc',
+                    color: active ? '#ffffff' : '#475569',
+                    fontSize: 12,
+                    fontWeight: active ? 600 : 500,
                     cursor: 'pointer',
-                    textAlign: 'center',
-                    boxShadow: isSelected ? '0 0 0 3px rgba(11,49,93,0.08)' : 'none',
+                    whiteSpace: 'nowrap',
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <div style={{ color: isSelected ? '#0b315d' : '#6b7280', marginBottom: 8 }}>
-                    {m.icon}
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 16 Locked Category Cards Grid */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
+              gap: 10,
+              maxHeight: 380,
+              overflowY: 'auto',
+              padding: '2px 4px 10px',
+              marginBottom: 16
+            }}
+          >
+            {BROCHURE_CATEGORIES.filter((c) => {
+              if (categoryFilter === 'all') return true;
+              if (categoryFilter === 'PEB' && (c.category === 'PEB' || c.category === 'Multi-Bay')) return true;
+              if (categoryFilter === 'Residential' && (c.category === 'Residential' || c.category === 'Industrial')) return true;
+              return c.category === categoryFilter;
+            }).map((cat, idx) => {
+              const isSelected = selectedCategory?.id === cat.id;
+              return (
+                <div
+                  key={cat.id}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    setSelectedModel(cat.modelKey);
+                    setTimeout(runCalculation, 0);
+                  }}
+                  style={{
+                    border: `1.5px solid ${isSelected ? '#0b315d' : '#e2e8f0'}`,
+                    borderRadius: 10,
+                    padding: '12px 10px',
+                    background: isSelected ? '#f0f7ff' : '#ffffff',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isSelected ? '0 4px 12px rgba(11,49,93,0.12)' : 'none'
+                  }}
+                >
+                  {/* Top Bar with locked order and brochure page tag */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: isSelected ? '#0b315d' : '#94a3b8' }}>
+                      #{idx + 1}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        background: isSelected ? '#0b315d' : '#f1f5f9',
+                        color: isSelected ? '#f59e0b' : '#64748b'
+                      }}
+                    >
+                      {cat.brochurePage}
+                    </span>
                   </div>
+
                   <div
                     style={{
                       fontSize: 13,
-                      fontWeight: 600,
-                      color: isSelected ? '#0b315d' : '#111827',
-                      lineHeight: 1.3,
-                      marginBottom: 4
+                      fontWeight: 700,
+                      color: isSelected ? '#0b315d' : '#1e293b',
+                      lineHeight: 1.25,
+                      marginBottom: 2
                     }}
                   >
-                    {m.name}
+                    {cat.name}
                   </div>
-                  <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.3 }}>
-                    {m.desc}
+
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>
+                    {cat.subType}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: '#64748b',
+                      lineHeight: 1.3,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {cat.desc}
+                  </div>
+
+                  <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Tag
+                      style={{
+                        fontSize: 9,
+                        margin: 0,
+                        borderRadius: 3,
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1'
+                      }}
+                    >
+                      {cat.modelKey}
+                    </Tag>
+                    {isSelected && (
+                      <CheckCircleOutlined style={{ color: '#0b315d', fontSize: 14 }} />
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* With Angle Toggle */}
+          {/* ── ENGINEERING SELECTORS STRIP (Master Spec Section 11: Single / Braced / Box) ── */}
           <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              paddingTop: 12,
-              borderTop: '1px solid #dde3ea'
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 16,
+              padding: '14px 16px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 8
             }}
           >
-            <Switch
-              checked={withAngle}
-              onChange={(checked) => {
-                setWithAngle(checked);
-                setTimeout(runCalculation, 0);
-              }}
-            />
-            <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
-              Include angle pricing
-            </span>
+            {/* Column Logic */}
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                Column Type (Section 11)
+              </span>
+              <Select
+                value={columnType}
+                onChange={(val) => {
+                  setColumnType(val);
+                  setTimeout(runCalculation, 0);
+                }}
+                style={{ width: '100%' }}
+              >
+                <Option value="Single">Single Column (1 Col · Standard)</Option>
+                <Option value="Braced">Braced Column (2 Cols · Wind Bracing)</Option>
+                <Option value="Box">Box Column (4 Cols · Heavy Load)</Option>
+              </Select>
+            </div>
+
+            {/* Beam Logic */}
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                Beam Engineering (Section 11)
+              </span>
+              <Select
+                value={beamType}
+                onChange={(val) => {
+                  setBeamType(val);
+                  setTimeout(runCalculation, 0);
+                }}
+                style={{ width: '100%' }}
+              >
+                <Option value="Standard">Standard Beam (1.0x)</Option>
+                <Option value="Braced">Braced Beam (+25% Steel Weight)</Option>
+                <Option value="Box">Box Beam (+50% Structural Steel)</Option>
+              </Select>
+            </div>
+
+            {/* Angle Toggle */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+                Angle Pricing
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, height: 32 }}>
+                <Switch
+                  checked={withAngle}
+                  onChange={(checked) => {
+                    setWithAngle(checked);
+                    setTimeout(runCalculation, 0);
+                  }}
+                />
+                <span style={{ fontSize: 12, color: '#334155', fontWeight: 500 }}>
+                  {withAngle ? 'With Angle' : 'Without Angle'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1135,6 +1358,30 @@ const EstimationPage = () => {
           ]}
         />
       </Modal>
+
+      {/* ── RAINWATER GUTTER & DOWNPIPE HYDRAULIC DESIGN MODAL (Master Spec Section 25) ── */}
+      <RainwaterDesignModal
+        visible={rainwaterModalVisible}
+        onClose={() => setRainwaterModalVisible(false)}
+        initialDimensions={{
+          span: form.getFieldValue('span'),
+          rise: calcResults?.rise || 2,
+          length: form.getFieldValue('length')
+        }}
+        onAdopt={(specs) => {
+          setDrainageSpecs(specs);
+          message.success(`Adopted Drainage Specs: Base ${specs.gutterBase}mm, Pipe ${specs.pipeDia}mm`);
+        }}
+      />
+
+      {/* ── ESTIMATOR CONFIDENCE INTELLIGENCE MODAL (Master Spec Section 26) ── */}
+      <ConfidenceIntelligenceModal
+        visible={confidenceModalVisible}
+        onClose={() => setConfidenceModalVisible(false)}
+        category={selectedCategory?.name}
+        area={calcResults?.area}
+        distance={form.getFieldValue('distance')}
+      />
     </div>
   );
 };

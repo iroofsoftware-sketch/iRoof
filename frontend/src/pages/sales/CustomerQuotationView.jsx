@@ -229,9 +229,12 @@ const CustomerQuotationView = () => {
               <span>{clientAddress}</span>
             </div>
             <div className="est-field">
-              <b>Model</b>
+              <b>Category</b>
               <span>:</span>
-              <span>{estimate.model}</span>
+              <span>
+                {inputData.categoryName ? `${inputData.categoryName} — ${inputData.subType || ''}` : estimate.model}
+                {inputData.brochurePage && ` (Brochure ${inputData.brochurePage})`}
+              </span>
             </div>
           </div>
         </div>
@@ -318,7 +321,9 @@ const CustomerQuotationView = () => {
             </div>
             <div className="est-specrow">
               <b>Gutters & Trims</b>
-              <span className="est-line">Included</span>
+              <span className="est-line">
+                {inputData.drainageSpecs ? `${inputData.drainageSpecs.gutterBase}mm Base · ${inputData.drainageSpecs.pipeDia}mm Pipe` : 'Included'}
+              </span>
               <span />
             </div>
           </div>
