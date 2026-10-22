@@ -320,18 +320,16 @@ const EnquiriesPage = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* HEADER ROW */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-            Sales Pipeline & Leads
-          </div>
-          <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>
+      {/* ── HEADER ROW ── */}
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1 className="page-title">Sales Pipeline & Leads</h1>
+          <p className="page-subtitle">
             Manage commercial roofing leads, architectural inquiries, site measurements, and proposal progress
-          </div>
+          </p>
         </div>
 
-        <Space size={12}>
+        <div className="page-header__actions">
           {/* View Switcher */}
           <Segmented
             value={viewMode}
@@ -350,28 +348,17 @@ const EnquiriesPage = () => {
           >
             New Lead
           </Button>
-        </Space>
+        </div>
       </div>
 
-      {/* FILTER BAR */}
-      <div
-        style={{
-          background: '#ffffff',
-          padding: '12px 16px',
-          borderRadius: 8,
-          border: '1px solid #e2e8f0',
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}
-      >
+      {/* ── FILTER BAR ── */}
+      <div className="filter-bar">
         <Input
           prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
           placeholder="Search leads by client name, ref, phone, location..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ width: 320 }}
+          style={{ width: 320, flex: '1 1 260px' }}
           allowClear
         />
 
@@ -617,7 +604,7 @@ const EnquiriesPage = () => {
         </div>
       ) : (
         /* VIEW: TABLE */
-        <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
           <Table
             columns={columns}
             dataSource={filteredEnquiries}
@@ -629,7 +616,7 @@ const EnquiriesPage = () => {
               style: { cursor: 'pointer' }
             })}
           />
-        </Card>
+        </div>
       )}
 
       {/* DETAIL DRAWER */}

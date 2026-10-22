@@ -152,17 +152,17 @@ const ProjectManagerDashboard = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* A) WELCOME ROW */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1 className="page-title">
             Good {greetingTime}, {firstName}
           </h1>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
+          <p className="page-subtitle">
             Project Execution, Site Visits & Erection Monitoring · {formattedDate}
-          </div>
+          </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div className="page-header__actions">
           <Button
             icon={<UsergroupAddOutlined />}
             onClick={() => navigate('/projectmanager/customers')}

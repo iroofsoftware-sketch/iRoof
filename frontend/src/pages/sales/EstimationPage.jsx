@@ -389,23 +389,26 @@ const EstimationPage = () => {
   const estimateRefString = estimateId ? `EST-${estimateId.slice(-6).toUpperCase()}` : 'EST-DRAFT';
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 80 }}>
+    <div style={{ maxWidth: 1360, margin: '0 auto', paddingBottom: 24 }}>
+      {/* ── PAGE HEADER ── */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Roof Estimation & Costing</h1>
+          <p className="page-subtitle">Configure engineering specifications, structural members & commercial pricing</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="ref-badge">#{estimateRefString}</span>
+          <Tag color={savedStatus === 'saved' ? 'success' : savedStatus === 'approved' ? 'green' : 'default'} style={{ borderRadius: 4, fontWeight: 600 }}>
+            {savedStatus.toUpperCase()}
+          </Tag>
+        </div>
+      </div>
+
       {/* ── SECTION 1: PROJECT DETAILS (.content-card) ── */}
       <div className="content-card">
         <div className="content-card__header">
           <span className="content-card__title">Project Details</span>
-          <span
-            style={{
-              fontFamily: 'monospace',
-              fontSize: 12,
-              fontWeight: 600,
-              color: '#0b315d',
-              background: '#eff6ff',
-              border: '1px solid #dde3ea',
-              borderRadius: 4,
-              padding: '2px 8px'
-            }}
-          >
+          <span className="ref-badge">
             #{estimateRefString}
           </span>
         </div>
@@ -1100,22 +1103,7 @@ const EstimationPage = () => {
       )}
 
       {/* ── STICKY FOOTER BAR ── */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: '#ffffff',
-          borderTop: '1px solid #dde3ea',
-          padding: '12px 24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 -2px 8px rgba(0,0,0,.06)',
-          zIndex: 100
-        }}
-      >
+      <div className="sticky-page-footer">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Tag
             style={{

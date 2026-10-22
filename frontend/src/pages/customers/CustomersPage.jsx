@@ -318,18 +318,15 @@ const CustomersPage = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* TOP HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <Title level={4} style={{ margin: 0, color: '#0f172a' }}>
-            Customer Relationship Management (CRM)
-          </Title>
-          <Text style={{ fontSize: 13, color: '#64748b' }}>
+      {/* ── HEADER ROW ── */}
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1 className="page-title">Customer Relationship Management (CRM)</h1>
+          <p className="page-subtitle">
             Master directory of roofing clients, builder accounts, project histories, and financial ledgers
-          </Text>
+          </p>
         </div>
-
-        <Space>
+        <div className="page-header__actions">
           <Button icon={<SyncOutlined />} onClick={handleSync} loading={loading}>
             Sync Records
           </Button>
@@ -341,104 +338,118 @@ const CustomersPage = () => {
           >
             Add Customer
           </Button>
-        </Space>
+        </div>
       </div>
 
-      {/* KPI METRIC CARDS */}
+      {/* ── KPI METRIC CARDS ── */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} md={6}>
-          <Card styles={{ body: { padding: 18 } }} style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>TOTAL CLIENTS</span>}
-              value={stats.totalCustomers}
-              prefix={<TeamOutlined style={{ color: '#0b2e59', marginRight: 8 }} />}
-              valueStyle={{ fontWeight: 800, color: '#0f172a', fontSize: 24 }}
-            />
-          </Card>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Total Clients</span>
+              <div className="stat-card__icon" style={{ background: 'var(--navy-subtle)', color: 'var(--navy)' }}>
+                <TeamOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value tabular-nums">{stats.totalCustomers}</div>
+            <div className="stat-card__meta">Registered customer accounts</div>
+          </div>
         </Col>
+
         <Col xs={24} sm={12} md={6}>
-          <Card styles={{ body: { padding: 18 } }} style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>ACTIVE CONTRACTS</span>}
-              value={stats.activeCustomers}
-              prefix={<CheckCircleOutlined style={{ color: '#15803d', marginRight: 8 }} />}
-              valueStyle={{ fontWeight: 800, color: '#15803d', fontSize: 24 }}
-            />
-          </Card>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Active Contracts</span>
+              <div className="stat-card__icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
+                <CheckCircleOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value tabular-nums" style={{ color: '#15803d' }}>
+              {stats.activeCustomers}
+            </div>
+            <div className="stat-card__meta">Live project engagements</div>
+          </div>
         </Col>
+
         <Col xs={24} sm={12} md={6}>
-          <Card styles={{ body: { padding: 18 } }} style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>LIFETIME BILLED</span>}
-              value={formatINR(stats.totalInvoiced)}
-              prefix={<AccountBookOutlined style={{ color: '#1d4ed8', marginRight: 8 }} />}
-              valueStyle={{ fontWeight: 800, color: '#0b2e59', fontSize: 22 }}
-            />
-          </Card>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Lifetime Billed</span>
+              <div className="stat-card__icon" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+                <AccountBookOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value tabular-nums" style={{ color: '#0b2e59', fontSize: 22 }}>
+              {formatINR(stats.totalInvoiced)}
+            </div>
+            <div className="stat-card__meta">Total cumulative billings</div>
+          </div>
         </Col>
+
         <Col xs={24} sm={12} md={6}>
-          <Card styles={{ body: { padding: 18 } }} style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>OUTSTANDING RECEIVABLES</span>}
-              value={formatINR(stats.totalDue)}
-              prefix={<ClockCircleOutlined style={{ color: '#d97706', marginRight: 8 }} />}
-              valueStyle={{ fontWeight: 800, color: stats.totalDue > 0 ? '#b91c1c' : '#15803d', fontSize: 22 }}
-            />
-          </Card>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Outstanding Receivables</span>
+              <div className="stat-card__icon" style={{ background: '#fff7ed', color: '#d97706' }}>
+                <ClockCircleOutlined />
+              </div>
+            </div>
+            <div
+              className="stat-card__value tabular-nums"
+              style={{ color: stats.totalDue > 0 ? '#b91c1c' : '#15803d', fontSize: 22 }}
+            >
+              {formatINR(stats.totalDue)}
+            </div>
+            <div className="stat-card__meta">Pending invoice balances</div>
+          </div>
         </Col>
       </Row>
 
-      {/* FILTER & SEARCH BAR */}
-      <Card styles={{ body: { padding: 16 } }} style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-        <Row gutter={[12, 12]} align="middle">
-          <Col xs={24} md={10}>
-            <Input
-              placeholder="Search by client name, company, phone, email, GSTIN, city..."
-              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              allowClear
-            />
-          </Col>
-          <Col xs={12} md={5}>
-            <Select
-              style={{ width: '100%' }}
-              value={categoryFilter}
-              onChange={setCategoryFilter}
-              placeholder="Filter Category"
-            >
-              <Option value="All">All Categories</Option>
-              <Option value="Industrial">Industrial</Option>
-              <Option value="Commercial">Commercial</Option>
-              <Option value="PEB Builder">PEB Builder</Option>
-              <Option value="Architect">Architect</Option>
-              <Option value="Individual">Individual</Option>
-              <Option value="Govt/Infra">Govt / Infra</Option>
-            </Select>
-          </Col>
-          <Col xs={12} md={5}>
-            <Select
-              style={{ width: '100%' }}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              placeholder="Filter Status"
-            >
-              <Option value="All">All Statuses</Option>
-              <Option value="Active">Active</Option>
-              <Option value="Lead">Lead</Option>
-              <Option value="Inactive">Inactive</Option>
-            </Select>
-          </Col>
-          <Col xs={24} md={4} style={{ textAlign: 'right' }}>
-            <Button icon={<ReloadOutlined />} onClick={fetchCustomers} loading={loading}>
-              Reset
-            </Button>
-          </Col>
-        </Row>
-      </Card>
+      {/* ── FILTER & SEARCH BAR ── */}
+      <div className="filter-bar">
+        <Input
+          placeholder="Search by client name, company, phone, email, GSTIN, city..."
+          prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          allowClear
+          style={{ width: 340, flex: '1 1 280px' }}
+        />
 
-      {/* CUSTOMERS DATA TABLE */}
-      <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <Select
+          style={{ width: 180 }}
+          value={categoryFilter}
+          onChange={setCategoryFilter}
+          placeholder="Filter Category"
+        >
+          <Option value="All">All Categories</Option>
+          <Option value="Industrial">Industrial</Option>
+          <Option value="Commercial">Commercial</Option>
+          <Option value="PEB Builder">PEB Builder</Option>
+          <Option value="Architect">Architect</Option>
+          <Option value="Individual">Individual</Option>
+          <Option value="Govt/Infra">Govt / Infra</Option>
+        </Select>
+
+        <Select
+          style={{ width: 160 }}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          placeholder="Filter Status"
+        >
+          <Option value="All">All Statuses</Option>
+          <Option value="Active">Active</Option>
+          <Option value="Lead">Lead</Option>
+          <Option value="Inactive">Inactive</Option>
+        </Select>
+
+        <Button icon={<ReloadOutlined />} onClick={fetchCustomers} loading={loading}>
+          Reset
+        </Button>
+      </div>
+
+      {/* ── CUSTOMERS DATA TABLE ── */}
+      <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
         <Table
           columns={columns}
           dataSource={customers}
@@ -447,7 +458,7 @@ const CustomersPage = () => {
           pagination={{ pageSize: 12, showTotal: (t) => `Total ${t} customer accounts` }}
           size="middle"
         />
-      </Card>
+      </div>
 
       {/* ADD / EDIT CUSTOMER MODAL */}
       <Modal

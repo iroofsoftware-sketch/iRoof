@@ -142,12 +142,14 @@ const PurchaseDashboard = () => {
   return (
     <div>
       {/* A) WELCOME ROW */}
-      <div style={{ marginBottom: 22 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
-          Good {greetingTime}, {firstName}
-        </h1>
-        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
-          Procurement & Supply Chain Console · {formattedDate}
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1 className="page-title">
+            Good {greetingTime}, {firstName}
+          </h1>
+          <p className="page-subtitle">
+            Procurement & Supply Chain Console · {formattedDate}
+          </p>
         </div>
       </div>
 
