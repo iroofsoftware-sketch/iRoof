@@ -43,7 +43,9 @@ import {
   ClockCircleOutlined,
   ExclamationCircleOutlined,
   InfoCircleOutlined,
-  RightOutlined
+  RightOutlined,
+  EditOutlined,
+  SettingOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -51,6 +53,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import { useAuthStore } from '../store/authStore';
 import { notificationService } from '../services/notificationService';
 import { searchService } from '../services/searchService';
+import UserProfileModal from '../components/common/UserProfileModal';
 
 dayjs.extend(relativeTime);
 
@@ -150,6 +153,9 @@ const RoleLayout = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+
+  // User Profile Modal State
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -272,12 +278,20 @@ const RoleLayout = () => {
     {
       key: 'user-header',
       label: (
-        <div style={{ padding: '4px 8px' }}>
-          <div style={{ fontWeight: 600, color: '#111827' }}>{user?.name || 'Staff User'}</div>
-          <div style={{ fontSize: 12, color: '#6b7280' }}>{user?.email}</div>
+        <div style={{ padding: '6px 8px' }}>
+          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13.5 }}>{user?.name || 'Staff User'}</div>
+          <div style={{ fontSize: 12, color: '#64748b' }}>{user?.email}</div>
+          {user?.designation && <div style={{ fontSize: 11, color: '#0b2e59', fontWeight: 600, marginTop: 2 }}>{user.designation}</div>}
         </div>
       ),
       disabled: true
+    },
+    { type: 'divider' },
+    {
+      key: 'edit-profile',
+      icon: <EditOutlined style={{ color: '#0b2e59' }} />,
+      label: <span style={{ fontWeight: 600 }}>My Profile & Security</span>,
+      onClick: () => setProfileModalOpen(true)
     },
     { type: 'divider' },
     {
@@ -382,15 +396,31 @@ const RoleLayout = () => {
       <div>
         <div
           style={{
-            padding: '14px 16px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+            padding: '12px 14px 12px 16px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'rgba(0, 0, 0, 0.15)'
+            background: 'rgba(0, 0, 0, 0.18)'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+          <div
+            onClick={() => setProfileModalOpen(true)}
+            title="Click to edit profile & security"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              overflow: 'hidden',
+              cursor: 'pointer',
+              flex: 1,
+              borderRadius: 6,
+              padding: '2px 4px',
+              transition: 'background 0.15s ease'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
             <Avatar
               size={32}
               style={{
@@ -398,7 +428,7 @@ const RoleLayout = () => {
                 color: '#ffffff',
                 fontWeight: 700,
                 flexShrink: 0,
-                border: '1.5px solid rgba(255, 255, 255, 0.2)',
+                border: '1.5px solid rgba(255, 255, 255, 0.25)',
                 fontSize: 12
               }}
             >
@@ -439,18 +469,32 @@ const RoleLayout = () => {
           </div>
 
           {!collapsed && (
-            <Button
-              type="text"
-              icon={<LogoutOutlined />}
-              onClick={handleLogout}
-              title="Sign Out"
-              style={{
-                color: 'rgba(255,255,255,0.45)',
-                padding: 4,
-                fontSize: 14
-              }}
-              className="sidebar-logout-btn"
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => setProfileModalOpen(true)}
+                title="Edit Profile & Security"
+                style={{
+                  color: 'rgba(255,255,255,0.45)',
+                  padding: 4,
+                  fontSize: 13
+                }}
+                className="sidebar-logout-btn"
+              />
+              <Button
+                type="text"
+                icon={<LogoutOutlined />}
+                onClick={handleLogout}
+                title="Sign Out"
+                style={{
+                  color: 'rgba(255,255,255,0.45)',
+                  padding: 4,
+                  fontSize: 14
+                }}
+                className="sidebar-logout-btn"
+              />
+            </div>
           )}
         </div>
 
@@ -865,6 +909,9 @@ const RoleLayout = () => {
           <span>Press ESC to close</span>
         </div>
       </Modal>
+
+      {/* ── USER PROFILE & SECURITY MODAL ── */}
+      <UserProfileModal open={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
 
       <style>{`
         .sidebar-logout-btn:hover {

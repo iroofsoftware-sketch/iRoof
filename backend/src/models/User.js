@@ -40,6 +40,16 @@ const userSchema = new mongoose.Schema(
       },
       required: [true, 'Role is required']
     },
+    phone: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    designation: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     isActive: {
       type: Boolean,
       default: true

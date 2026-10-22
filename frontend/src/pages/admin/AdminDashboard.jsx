@@ -9,7 +9,13 @@ import {
   ControlOutlined,
   ShopOutlined,
   UsergroupAddOutlined,
-  DownloadOutlined
+  DownloadOutlined,
+  SettingOutlined,
+  EditOutlined,
+  EyeOutlined,
+  BuildOutlined,
+  RightCircleOutlined,
+  ArrowRightOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -18,6 +24,7 @@ import api from '../../services/api';
 import RevenueAreaChart from '../../components/charts/RevenueAreaChart';
 import ConversionFunnelChart from '../../components/charts/ConversionFunnelChart';
 import StatusDonutChart from '../../components/charts/StatusDonutChart';
+import EnterpriseSettingsModal from '../../components/common/EnterpriseSettingsModal';
 
 const AdminDashboard = () => {
   const { user } = useAuthStore();
@@ -35,6 +42,7 @@ const AdminDashboard = () => {
   const [funnelData, setFunnelData] = useState([]);
   const [donutData, setDonutData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
 
   const hour = new Date().getHours();
   const greetingTime = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
@@ -99,7 +107,7 @@ const AdminDashboard = () => {
           { label: 'Drafted', count: draftWO || 0, color: '#64748b' }
         ]);
 
-        // Combined activity feed
+        // Combined activity feed with direct edit navigation
         const activities = [
           ...enquiries.slice(0, 3).map((e) => ({
             key: e._id,
@@ -107,7 +115,8 @@ const AdminDashboard = () => {
             type: 'Enquiry',
             detail: `${e.clientName} (${e.roofType || 'Standard'})`,
             status: e.status || 'new',
-            date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('en-IN') : '—'
+            date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('en-IN') : '—',
+            route: '/admin/enquiries'
           })),
           ...estimates.slice(0, 3).map((est) => ({
             key: est._id,
@@ -115,9 +124,19 @@ const AdminDashboard = () => {
             type: 'Estimate',
             detail: `${est.model} · ₹${(est.results?.costs?.grandTotal || 0).toLocaleString('en-IN')}`,
             status: est.status || 'estimated',
-            date: est.createdAt ? new Date(est.createdAt).toLocaleDateString('en-IN') : '—'
+            date: est.createdAt ? new Date(est.createdAt).toLocaleDateString('en-IN') : '—',
+            route: `/sales/estimates/${est._id}`
+          })),
+          ...workOrders.slice(0, 3).map((w) => ({
+            key: w._id,
+            ref: w.refCode || `WO-${w._id.slice(-4).toUpperCase()}`,
+            type: 'WorkOrder',
+            detail: `${w.clientName} · ${w.span || 0}m × ${w.length || 0}m (${w.roofModel || 'Standard'})`,
+            status: w.status || 'active',
+            date: w.createdAt ? new Date(w.createdAt).toLocaleDateString('en-IN') : '—',
+            route: `/projectmanager/workorders/${w._id}`
           }))
-        ].slice(0, 5);
+        ].slice(0, 6);
 
         setRecentActivities(activities);
       } catch (err) {
@@ -196,6 +215,22 @@ const AdminDashboard = () => {
       key: 'date',
       width: 120,
       render: (d) => <span style={{ color: '#64748b', fontSize: 12.5 }} className="tabular-nums">{d}</span>
+    },
+    {
+      title: 'ACTIONS',
+      key: 'actions',
+      align: 'right',
+      render: (_, record) => (
+        <Button
+          type="text"
+          size="small"
+          icon={<EditOutlined />}
+          onClick={() => navigate(record.route)}
+          style={{ color: '#0b2e59', fontWeight: 600 }}
+        >
+          Manage / Edit
+        </Button>
+      )
     }
   ];
 
@@ -226,7 +261,7 @@ const AdminDashboard = () => {
             onClick={() => navigate('/admin/users')}
             style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 500 }}
           >
-            Add User
+            Manage Users
           </Button>
           <Button
             icon={<FileTextOutlined />}
@@ -243,11 +278,18 @@ const AdminDashboard = () => {
             Rate Masters
           </Button>
           <Button
+            icon={<SettingOutlined />}
+            onClick={() => setEnterpriseModalOpen(true)}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 600 }}
+          >
+            Enterprise Settings
+          </Button>
+          <Button
             icon={<DownloadOutlined />}
             onClick={handleExportWorkOrdersCSV}
             style={{ background: '#0b2e59', color: '#ffffff', borderColor: '#0b2e59', fontWeight: 600 }}
           >
-            Export Work Orders (CSV)
+            Export CSV
           </Button>
         </div>
       </div>
@@ -357,6 +399,122 @@ const AdminDashboard = () => {
           </div>
         </Col>
       </Row>
+
+      {/* E) EXECUTIVE WORK ORDER PIPELINE & GATE CONTROL */}
+      <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid #f1f5f9',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 10
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+              Executive Project Pipeline & Gate Oversight
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+              Track active contracts, site surveys, CAD design drawings, workshop fabrication and handovers
+            </div>
+          </div>
+          <Button
+            type="primary"
+            size="small"
+            icon={<ArrowRightOutlined />}
+            onClick={() => navigate('/projectmanager/workorders')}
+            style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
+          >
+            All Work Orders
+          </Button>
+        </div>
+
+        <Table
+          columns={[
+            {
+              title: 'REF CODE',
+              dataIndex: 'refCode',
+              key: 'refCode',
+              width: 140,
+              render: (t, r) => <span className="ref-badge">{t || `WO-${r._id.slice(-6).toUpperCase()}`}</span>
+            },
+            {
+              title: 'CLIENT / PROJECT',
+              dataIndex: 'clientName',
+              key: 'clientName',
+              render: (name, r) => (
+                <div>
+                  <div style={{ fontWeight: 600, color: '#0f172a' }}>{name}</div>
+                  <div style={{ fontSize: 11.5, color: '#64748b' }}>{r.siteAddress || 'Site address pending'}</div>
+                </div>
+              )
+            },
+            {
+              title: 'ROOF MODEL',
+              dataIndex: 'roofModel',
+              key: 'roofModel',
+              render: (m, r) => (
+                <span style={{ fontSize: 12.5, color: '#334155' }}>
+                  {m || 'Trussless Arch'} ({r.span || 0}m × {r.length || 0}m)
+                </span>
+              )
+            },
+            {
+              title: 'TOTAL VALUE',
+              dataIndex: 'grandTotal',
+              key: 'grandTotal',
+              align: 'right',
+              render: (v) => (
+                <span className="tabular-nums" style={{ fontWeight: 700, color: '#0b2e59' }}>
+                  ₹ {Math.round(v || 0).toLocaleString('en-IN')}
+                </span>
+              )
+            },
+            {
+              title: 'STAGE',
+              dataIndex: 'currentGate',
+              key: 'currentGate',
+              render: (g) => {
+                const gateMap = {
+                  gate1: { label: 'Site Survey', color: 'blue' },
+                  gate2: { label: 'Commercial Terms', color: 'orange' },
+                  gate3: { label: 'Design CAD', color: 'purple' },
+                  gate4: { label: 'Workshop Fab', color: 'cyan' },
+                  gate5: { label: 'Erection & Handover', color: 'green' }
+                };
+                const info = gateMap[g] || { label: g || 'Pending', color: 'default' };
+                return <span style={{ padding: '2px 8px', borderRadius: 4, background: '#f1f5f9', color: '#0f172a', fontWeight: 600, fontSize: 11.5 }}>{info.label}</span>;
+              }
+            },
+            {
+              title: 'ACTIONS',
+              key: 'actions',
+              align: 'right',
+              render: (_, r) => (
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => navigate(`/projectmanager/workorders/${r._id}`)}
+                  style={{ color: '#0b2e59', fontWeight: 600 }}
+                >
+                  Manage / Edit
+                </Button>
+              )
+            }
+          ]}
+          dataSource={workOrdersList.slice(0, 6)}
+          rowKey="_id"
+          pagination={false}
+          size="middle"
+        />
+      </div>
+
+      {/* ── ENTERPRISE SETTINGS & COMPANY PROFILE MODAL ── */}
+      <EnterpriseSettingsModal open={enterpriseModalOpen} onClose={() => setEnterpriseModalOpen(false)} />
     </div>
   );
 };
