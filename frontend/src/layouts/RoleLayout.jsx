@@ -144,25 +144,6 @@ const RoleLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notifDrawer, setNotifDrawer] = useState(false);
-
-  const loadNotifications = useCallback(async () => {
-    try {
-      const r = await axios.get('/notifications?limit=20');
-      setNotifications(r.data.data || []);
-      setUnreadCount(r.data.unreadCount || 0);
-    } catch { /* silent */ }
-  }, []);
-
-  const markAllRead = async () => {
-    try {
-      await axios.patch('/notifications/mark-all-read');
-      setUnreadCount(0);
-      setNotifications(n => n.map(x => ({ ...x, isRead: true })));
-    } catch { /* silent */ }
-  };
 
   // Notifications State
   const [notifications, setNotifications] = useState([]);
