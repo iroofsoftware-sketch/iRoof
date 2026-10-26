@@ -12,10 +12,10 @@ const {
 
 router.use(protect);
 
-router.post('/', authorize('admin'), createSupplier);
+router.post('/', authorize('admin', 'purchase'), createSupplier);
 router.get('/', authorize('admin', 'purchase'), getSuppliers);
 router.get('/:id', authorize('admin', 'purchase'), getSupplierById);
-router.patch('/:id', authorize('admin'), updateSupplier);
+router.patch('/:id', authorize('admin', 'purchase'), updateSupplier);
 router.delete('/:id', authorize('admin'), deleteSupplier);
 
 module.exports = router;

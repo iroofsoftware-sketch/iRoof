@@ -57,6 +57,11 @@ class IRoofMobileApp extends StatelessWidget {
       case 'admin':
         return AdminTabScaffold(user: user);
       case 'projectmanager':
+      case 'sales':
+      case 'accounts':
+      case 'purchase':
+      case 'workshop':
+      case 'design':
         return PmTabScaffold(user: user);
       case 'sitevisitor':
       default:

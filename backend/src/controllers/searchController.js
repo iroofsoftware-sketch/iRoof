@@ -41,12 +41,11 @@ const globalSearch = async (req, res) => {
 
       Estimate.find({
         $or: [
-          { refCode: regex },
-          { clientName: regex },
           { model: regex }
         ]
       })
-        .select('refCode clientName model results status')
+        .populate('enquiryId', 'clientName')
+        .select('model results status enquiryId')
         .limit(6)
         .lean(),
 
@@ -56,7 +55,7 @@ const globalSearch = async (req, res) => {
           { clientName: regex }
         ]
       })
-        .select('refCode clientName totalAmount status')
+        .select('refCode clientName grandTotal status')
         .limit(6)
         .lean()
     ]);
@@ -65,8 +64,8 @@ const globalSearch = async (req, res) => {
       ...workOrders.map((wo) => ({
         type: 'workorder',
         id: wo._id,
-        title: wo.refCode,
-        subtitle: `${wo.clientName} · ${wo.status?.replace(/_/g, ' ')}`,
+        title: wo.refCode || `WO-${wo._id.toString().slice(-4).toUpperCase()}`,
+        subtitle: `${wo.clientName} · ${(wo.status || 'active').replace(/_/g, ' ')}`,
         link: `/projectmanager/workorders/${wo._id}`,
         tag: 'Work Order'
       })),
@@ -78,19 +77,23 @@ const globalSearch = async (req, res) => {
         link: `/sales/customers`,
         tag: 'Customer'
       })),
-      ...estimates.map((e) => ({
-        type: 'estimate',
-        id: e._id,
-        title: e.refCode || 'Estimate',
-        subtitle: `${e.clientName || 'Client'} · ${e.model || ''}`,
-        link: `/sales/estimation`,
-        tag: 'Estimate'
-      })),
+      ...estimates.map((e) => {
+        const cName = e.enquiryId?.clientName || 'Commercial Estimate';
+        const cost = e.results?.costs?.grandTotal || e.results?.grandTotal || 0;
+        return {
+          type: 'estimate',
+          id: e._id,
+          title: `EST-${e._id.toString().slice(-6).toUpperCase()}`,
+          subtitle: `${cName} · ${e.model || ''} · ₹${Math.round(cost).toLocaleString('en-IN')}`,
+          link: `/sales/estimates/${e._id}`,
+          tag: 'Estimate'
+        };
+      }),
       ...invoices.map((inv) => ({
         type: 'invoice',
         id: inv._id,
-        title: inv.refCode || 'Invoice',
-        subtitle: `${inv.clientName || ''} · ₹${Number(inv.totalAmount || 0).toLocaleString('en-IN')}`,
+        title: inv.refCode || `INV-${inv._id.toString().slice(-4).toUpperCase()}`,
+        subtitle: `${inv.clientName || ''} · ₹${Number(inv.grandTotal || 0).toLocaleString('en-IN')}`,
         link: `/accounts/invoices`,
         tag: 'Invoice'
       }))

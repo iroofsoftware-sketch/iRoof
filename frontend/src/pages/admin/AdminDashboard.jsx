@@ -15,7 +15,8 @@ import {
   EyeOutlined,
   BuildOutlined,
   RightCircleOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  UserOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -25,6 +26,7 @@ import RevenueAreaChart from '../../components/charts/RevenueAreaChart';
 import ConversionFunnelChart from '../../components/charts/ConversionFunnelChart';
 import StatusDonutChart from '../../components/charts/StatusDonutChart';
 import EnterpriseSettingsModal from '../../components/common/EnterpriseSettingsModal';
+import UserProfileModal from '../../components/common/UserProfileModal';
 
 const AdminDashboard = () => {
   const { user } = useAuthStore();
@@ -44,6 +46,7 @@ const AdminDashboard = () => {
   const [revenueData, setRevenueData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const hour = new Date().getHours();
   const greetingTime = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
@@ -304,6 +307,13 @@ const AdminDashboard = () => {
             Rate Masters
           </Button>
           <Button
+            icon={<UserOutlined />}
+            onClick={() => setProfileModalOpen(true)}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 600 }}
+          >
+            My Profile
+          </Button>
+          <Button
             icon={<SettingOutlined />}
             onClick={() => setEnterpriseModalOpen(true)}
             style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 600 }}
@@ -541,6 +551,9 @@ const AdminDashboard = () => {
 
       {/* ── ENTERPRISE SETTINGS & COMPANY PROFILE MODAL ── */}
       <EnterpriseSettingsModal open={enterpriseModalOpen} onClose={() => setEnterpriseModalOpen(false)} />
+
+      {/* ── USER PROFILE & SECURITY MODAL ── */}
+      <UserProfileModal open={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
     </div>
   );
 };

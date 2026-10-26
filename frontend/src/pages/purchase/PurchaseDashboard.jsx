@@ -228,7 +228,7 @@ const PurchaseDashboard = () => {
         </Button>
         <Button
           icon={<ShopOutlined />}
-          onClick={() => navigate('/admin/suppliers')}
+          onClick={() => navigate('/purchase/suppliers')}
           style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
         >
           Suppliers Master

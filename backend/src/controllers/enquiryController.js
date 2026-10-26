@@ -1,4 +1,5 @@
 const { Enquiry, ENQUIRY_STATUSES } = require('../models/Enquiry');
+const Customer = require('../models/Customer');
 
 // @desc    Get all enquiries with optional filters
 // @route   GET /api/enquiries
@@ -113,6 +114,26 @@ const createEnquiry = async (req, res) => {
     const populated = await Enquiry.findById(newEnquiry._id)
       .populate('assignedTo', 'name email role')
       .populate('createdBy', 'name email');
+
+    // Auto-sync customer to CRM
+    try {
+      const cleanPhone = phone.trim();
+      const existingCust = await Customer.findOne({ phone: cleanPhone });
+      if (!existingCust) {
+        await Customer.create({
+          name: clientName.trim(),
+          phone: cleanPhone,
+          email: email ? email.trim().toLowerCase() : '',
+          address: address ? address.trim() : '',
+          category: 'Industrial',
+          status: 'Lead',
+          notes: `Auto-created from Enquiry on ${new Date().toLocaleDateString('en-IN')}`,
+          createdBy: req.user._id
+        });
+      }
+    } catch (custErr) {
+      console.warn('Auto-create customer non-fatal warning:', custErr.message);
+    }
 
     return res.status(201).json({
       success: true,

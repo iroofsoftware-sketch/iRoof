@@ -91,8 +91,7 @@ const getRoleMenuConfig = (role) => {
         { key: '/sales/customers', icon: <ContactsOutlined />, label: 'Customers (CRM)' },
         { key: '/sales/enquiries', icon: <FileTextOutlined />, label: 'Leads & Pipeline' },
         { key: '/sales/estimates/new', icon: <CalculatorOutlined />, label: 'New Estimate' },
-        { key: '/sales/estimates', icon: <FolderOpenOutlined />, label: 'Saved Estimates' },
-        { key: '/customers', icon: <TeamOutlined />, label: 'Customers' }
+        { key: '/sales/estimates', icon: <FolderOpenOutlined />, label: 'Saved Estimates' }
       ];
 
     case 'accounts':
@@ -120,7 +119,7 @@ const getRoleMenuConfig = (role) => {
         { key: '/purchase', icon: <DashboardOutlined />, label: 'Dashboard' },
         { key: '/purchase/requests', icon: <FileTextOutlined />, label: 'Purchase Requests' },
         { key: '/purchase/orders', icon: <ShoppingCartOutlined />, label: 'Purchase Orders' },
-        { key: '/admin/suppliers', icon: <ShopOutlined />, label: 'Suppliers' }
+        { key: '/purchase/suppliers', icon: <ShopOutlined />, label: 'Suppliers' }
       ];
 
     case 'workshop':
