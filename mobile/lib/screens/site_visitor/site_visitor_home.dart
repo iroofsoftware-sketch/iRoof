@@ -173,14 +173,26 @@ class _SiteVisitorHomeState extends State<SiteVisitorHome> {
               const SizedBox(height: 20),
 
               // ── CONSULTATION METRICS ROW ──
-              Row(
-                children: [
-                  Expanded(child: _buildMetricTile('Scheduled', '${_visits.length}', Icons.calendar_today, Colors.blue)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildMetricTile('Won & Quoted', '8', Icons.verified, AppColors.success)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildMetricTile('Win Rate', '82%', Icons.trending_up, AppColors.accentGold)),
-                ],
+              Builder(
+                builder: (context) {
+                  final completedCount = _visits.where((v) {
+                    final status = (v['status'] ?? '').toString().toLowerCase();
+                    return status == 'completed' || status == 'visited' || status == 'inspected';
+                  }).length;
+                  final winRate = _visits.isNotEmpty
+                      ? '${((completedCount / _visits.length) * 100).round()}%'
+                      : '0%';
+
+                  return Row(
+                    children: [
+                      Expanded(child: _buildMetricTile('Scheduled', '${_visits.length}', Icons.calendar_today, Colors.blue)),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildMetricTile('Completed', '$completedCount', Icons.verified, AppColors.success)),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildMetricTile('Action Rate', winRate, Icons.trending_up, AppColors.accentGold)),
+                    ],
+                  );
+                },
               ),
 
               const SizedBox(height: 24),

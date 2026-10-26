@@ -220,11 +220,16 @@ class ApiService {
   // ── PM REVIEW (APPROVE BOM / REQUEST REVISION) ──
   static Future<bool> pmReviewWorkOrder({
     required String workOrderId,
-    required String decision, // 'approved' or 'revision_requested'
+    required String decision, // 'approve' or 'revise' (accepts 'approved' / 'revision_requested')
     String notes = '',
   }) async {
     final baseUrl = await getBaseUrl();
     final user = await getCurrentUser();
+
+    // Normalize decision string for backend compatibility
+    final normalizedDecision = (decision == 'revision_requested' || decision == 'revise')
+        ? 'revise'
+        : 'approve';
 
     final res = await http
         .post(
@@ -234,7 +239,8 @@ class ApiService {
             if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
           },
           body: jsonEncode({
-            'decision': decision,
+            'decision': normalizedDecision,
+            'revisionNotes': notes,
             'notes': notes,
           }),
         )
@@ -243,6 +249,34 @@ class ApiService {
     if (res.statusCode == 200) return true;
     final err = jsonDecode(res.body);
     throw Exception(err['message'] ?? 'Review submission failed');
+  }
+
+  // ── CREATE NEW ENQUIRY FROM FIELD CONSULTATION ──
+  static Future<bool> createEnquiry(Map<String, dynamic> data) async {
+    final baseUrl = await getBaseUrl();
+    final user = await getCurrentUser();
+
+    final res = await http
+        .post(
+          Uri.parse('$baseUrl/enquiries'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+          },
+          body: jsonEncode({
+            'clientName': data['clientName'],
+            'phone': data['phone'],
+            'address': data['location'] ?? data['address'] ?? '',
+            'roofType': data['roofModel'] ?? data['roofType'] ?? 'Normal Cantilever',
+            'status': data['status'] ?? 'visited',
+            'notes': data['notes'] ?? 'Field Site Consultation logged from mobile app',
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    if (res.statusCode == 200 || res.statusCode == 201) return true;
+    final err = jsonDecode(res.body);
+    throw Exception(err['message'] ?? 'Failed to create enquiry');
   }
 
   // ── SITE VISITS (ASSIGNED OR ALL) ──
@@ -318,13 +352,18 @@ class ApiService {
 
   // ── SUBMIT SITE INSPECTION (FORM COMPATIBILITY ALIAS) ──
   static Future<bool> submitSiteInspection(Map<String, dynamic> data) async {
-    return submitSiteInspectionReport(
-      visitId: data['_id'] ?? data['id'] ?? '',
-      report: data['report'] ?? 'Field Site Inspection Report',
-      notes: data['notes'] ?? '',
-      photos: [],
-      extraMeasurements: data,
-    );
+    final visitId = (data['_id'] ?? data['id'] ?? data['visitId'] ?? '').toString();
+    if (visitId.isNotEmpty) {
+      return submitSiteInspectionReport(
+        visitId: visitId,
+        report: data['report'] ?? 'Field Site Inspection Report',
+        notes: data['notes'] ?? '',
+        photos: [],
+        extraMeasurements: data,
+      );
+    }
+    // If no existing visitId, create a new enquiry with status 'visited' so it's registered in backend CRM
+    return createEnquiry(data);
   }
 
   // ── UPLOAD PHOTO (CAMERA / GALLERY) ──

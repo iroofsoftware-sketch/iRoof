@@ -151,7 +151,7 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
             children: [
               Expanded(child: _buildMetricCard('Total WOs', '${_stats['total'] ?? _workOrders.length}', AppColors.primaryNavy)),
               const SizedBox(width: 8),
-              Expanded(child: _buildMetricCard('Completed', '${_stats['completed'] ?? 1}', AppColors.successGreen)),
+              Expanded(child: _buildMetricCard('Completed', '${_stats['completed'] ?? 0}', AppColors.successGreen)),
               const SizedBox(width: 8),
               Expanded(child: _buildMetricCard('Pending PM', '${_stats['pending_pm_review'] ?? 0}', AppColors.accentGold)),
             ],
@@ -161,7 +161,26 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
           const Text('Active Production Orders (7-Gate Lifecycle)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
           const SizedBox(height: 10),
 
-          ListView.separated(
+          if (_workOrders.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.assignment_outlined, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text('No Active Work Orders', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primaryNavy)),
+                  const SizedBox(height: 6),
+                  const Text('All project work orders and gate milestones will be listed here.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                ],
+              ),
+            )
+          else
+            ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _workOrders.length,
@@ -243,47 +262,66 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
             ],
           ),
           const SizedBox(height: 8),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _siteReports.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final r = _siteReports[index];
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(r['refCode'] ?? 'SV', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primaryNavy)),
-                        Text(r['status']?.toString().toUpperCase() ?? 'SCHEDULED', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.green)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(r['clientName'] ?? 'Client Consultation', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(r['siteAddress'] ?? 'Site Location', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    if (r['notes'] != null && r['notes'].toString().isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
-                        child: Text('Notes: ${r['notes']}', style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic)),
+          if (_siteReports.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.fact_check_outlined, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text('No Site Reports Submitted', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primaryNavy)),
+                  const SizedBox(height: 6),
+                  const Text('Field site visits and engineer consultation reports will stream live here.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                ],
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _siteReports.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final r = _siteReports[index];
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(r['refCode'] ?? 'SV', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primaryNavy)),
+                          Text(r['status']?.toString().toUpperCase() ?? 'SCHEDULED', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.green)),
+                        ],
                       ),
+                      const SizedBox(height: 6),
+                      Text(r['clientName'] ?? 'Client Consultation', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text(r['siteAddress'] ?? 'Site Location', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      if (r['notes'] != null && r['notes'].toString().isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+                          child: Text('Notes: ${r['notes']}', style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic)),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -301,7 +339,26 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
           const Text('Review drawing submissions and approve Bill of Materials to unlock Workshop coil fabrication.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 14),
 
-          ListView.separated(
+          if (_workOrders.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.draw_outlined, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text('No Design Submissions Pending', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primaryNavy)),
+                  const SizedBox(height: 6),
+                  const Text('Design engineering submittals waiting for PM Gate 4 approval will appear here.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                ],
+              ),
+            )
+          else
+            ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _workOrders.length,

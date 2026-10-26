@@ -123,6 +123,31 @@ class _PmHomeState extends State<PmHome> {
 
               if (_loading)
                 const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+              else if (_workOrders.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(Icons.inbox_outlined, size: 48, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No Work Orders Yet',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primaryNavy),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Work orders created by Sales/Admin will appear here with live 7-gate tracking.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                )
               else
                 ListView.separated(
                   shrinkWrap: true,

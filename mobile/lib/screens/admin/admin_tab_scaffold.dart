@@ -168,7 +168,6 @@ class _AdminTabScaffoldState extends State<AdminTabScaffold> {
         totalVal += (wo['grandTotal'] as num).toDouble();
       }
     }
-    if (totalVal == 0) totalVal = 4064580.0;
 
     return RefreshIndicator(
       onRefresh: _loadAllData,
@@ -228,9 +227,9 @@ class _AdminTabScaffoldState extends State<AdminTabScaffold> {
           // Stage Counts
           Row(
             children: [
-              Expanded(child: _buildStageStatCard('Pending Accounts', '${_stats['pending_accounts'] ?? 2}', Colors.amber.shade800)),
+              Expanded(child: _buildStageStatCard('Pending Accounts', '${_stats['pending_accounts'] ?? 0}', Colors.amber.shade800)),
               const SizedBox(width: 8),
-              Expanded(child: _buildStageStatCard('Completed', '${_stats['completed'] ?? 1}', AppColors.successGreen)),
+              Expanded(child: _buildStageStatCard('Completed', '${_stats['completed'] ?? 0}', AppColors.successGreen)),
               const SizedBox(width: 8),
               Expanded(child: _buildStageStatCard('Gate 4 PM', '${_stats['pending_pm_review'] ?? 0}', Colors.blue)),
             ],

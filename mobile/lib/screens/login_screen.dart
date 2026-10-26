@@ -81,6 +81,11 @@ class _LoginScreenState extends State<LoginScreen> {
         destination = AdminTabScaffold(user: user);
         break;
       case 'projectmanager':
+      case 'sales':
+      case 'accounts':
+      case 'purchase':
+      case 'workshop':
+      case 'design':
         destination = PmTabScaffold(user: user);
         break;
       case 'sitevisitor':

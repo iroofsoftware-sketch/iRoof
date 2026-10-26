@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/api_service.dart';
@@ -17,8 +18,11 @@ class AdminHome extends StatefulWidget {
 }
 
 class _AdminHomeState extends State<AdminHome> {
-  int _workOrdersCount = 3;
-  int _visitsCount = 3;
+  int _workOrdersCount = 0;
+  int _visitsCount = 0;
+  double _pipelineTotal = 0;
+  int _enquiriesCount = 0;
+  final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
   @override
   void initState() {
@@ -30,10 +34,21 @@ class _AdminHomeState extends State<AdminHome> {
     try {
       final wos = await ApiService.getWorkOrders();
       final svs = await ApiService.getSiteVisits();
+      final enqs = await ApiService.getEnquiries();
+
+      double total = 0;
+      for (final wo in wos) {
+        if (wo['grandTotal'] is num) {
+          total += (wo['grandTotal'] as num).toDouble();
+        }
+      }
+
       if (mounted) {
         setState(() {
           _workOrdersCount = wos.length;
           _visitsCount = svs.length;
+          _pipelineTotal = total;
+          _enquiriesCount = enqs.length;
         });
       }
     } catch (_) {}
@@ -49,6 +64,11 @@ class _AdminHomeState extends State<AdminHome> {
 
   @override
   Widget build(BuildContext context) {
+    // Dynamic conversion rate calculation
+    final conversionRate = _enquiriesCount > 0
+        ? '${((_workOrdersCount / _enquiriesCount) * 100).round()}%'
+        : (_workOrdersCount > 0 ? '100%' : '0%');
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -93,7 +113,10 @@ class _AdminHomeState extends State<AdminHome> {
                 children: [
                   const Text('Company Commercial Overview', style: TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 6),
-                  const Text('₹ 42,50,000', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),
+                  Text(
+                    _currency.format(_pipelineTotal),
+                    style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800),
+                  ),
                   const SizedBox(height: 4),
                   const Text('Total Active Pipeline Across Commercial Warehouses', style: TextStyle(color: Colors.white54, fontSize: 11)),
                   const Divider(color: Colors.white24, height: 26),
@@ -102,7 +125,7 @@ class _AdminHomeState extends State<AdminHome> {
                     children: [
                       _buildMiniStat('Active Work Orders', '$_workOrdersCount'),
                       _buildMiniStat('Site Visits This Month', '$_visitsCount'),
-                      _buildMiniStat('Conversion Rate', '78%'),
+                      _buildMiniStat('Conversion Rate', conversionRate),
                     ],
                   ),
                 ],
