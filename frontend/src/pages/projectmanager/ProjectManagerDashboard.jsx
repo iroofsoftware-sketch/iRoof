@@ -52,8 +52,8 @@ const ProjectManagerDashboard = () => {
           setStats(st);
 
           setWoDonut([
-            { label: 'Active On-Site', count: st.active || 1, color: '#0b2e59' },
-            { label: 'Completed', count: st.completed || 1, color: '#15803d' },
+            { label: 'Active On-Site', count: st.active || 0, color: '#0b2e59' },
+            { label: 'Completed', count: st.completed || 0, color: '#15803d' },
             { label: 'On Hold', count: st.on_hold || 0, color: '#d97706' },
             { label: 'Draft / Kickoff', count: Math.max(0, (st.total || 0) - (st.active || 0) - (st.completed || 0) - (st.on_hold || 0)), color: '#64748b' }
           ]);
@@ -63,11 +63,11 @@ const ProjectManagerDashboard = () => {
         const jobs = workRes.data?.data || [];
 
         setTaskFunnel([
-          { label: 'Work Orders Assigned', count: statsRes.data?.data?.total || 4, color: '#0b2e59' },
-          { label: 'Design & CAD Done', count: designs.filter((d) => d.status === 'approved').length || 3, color: '#1d4ed8' },
-          { label: 'Workshop Fabrication', count: jobs.filter((j) => j.status === 'completed').length || 2, color: '#0284c7' },
-          { label: 'On-Site Erection', count: statsRes.data?.data?.active || 2, color: '#c9940a' },
-          { label: 'Final Certification', count: statsRes.data?.data?.completed || 1, color: '#15803d' }
+          { label: 'Work Orders Assigned', count: statsRes.data?.data?.total || 0, color: '#0b2e59' },
+          { label: 'Design & CAD Done', count: designs.filter((d) => d.status === 'approved').length, color: '#1d4ed8' },
+          { label: 'Workshop Fabrication', count: jobs.filter((j) => j.status === 'completed').length, color: '#0284c7' },
+          { label: 'On-Site Erection', count: statsRes.data?.data?.active || 0, color: '#c9940a' },
+          { label: 'Final Certification', count: statsRes.data?.data?.completed || 0, color: '#15803d' }
         ]);
 
         if (listRes.data?.data) {

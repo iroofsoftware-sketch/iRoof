@@ -14,9 +14,9 @@ export const ConversionFunnelChart = ({
     { label: 'Completed / Handover', count: 14, color: '#15803d' }
   ]
 }) => {
-  const maxCount = Math.max(...stages.map((s) => s.count), 1);
-  const initialCount = stages[0]?.count || 1;
-  const overallConversion = Math.round(((stages[stages.length - 1]?.count || 0) / initialCount) * 100);
+  const maxCount = Math.max(...stages.map((s) => s.count || 0), 0);
+  const initialCount = stages[0]?.count || 0;
+  const overallConversion = initialCount > 0 ? Math.round(((stages[stages.length - 1]?.count || 0) / initialCount) * 100) : 0;
 
   return (
     <Card
@@ -55,8 +55,9 @@ export const ConversionFunnelChart = ({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
         {stages.map((stage, idx) => {
-          const widthPct = Math.max(15, Math.round((stage.count / maxCount) * 100));
-          const stepConv = idx === 0 ? 100 : Math.round((stage.count / (stages[idx - 1]?.count || 1)) * 100);
+          const widthPct = maxCount > 0 && stage.count > 0 ? Math.max(10, Math.round((stage.count / maxCount) * 100)) : 0;
+          const prevCount = stages[idx - 1]?.count || 0;
+          const stepConv = idx === 0 ? (stage.count > 0 ? 100 : 0) : (prevCount > 0 ? Math.round((stage.count / prevCount) * 100) : 0);
 
           return (
             <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -76,7 +77,7 @@ export const ConversionFunnelChart = ({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                    {idx > 0 && `${stepConv}% conv`}
+                    {idx > 0 && stage.count > 0 && `${stepConv}% conv`}
                   </span>
                   <span
                     style={{

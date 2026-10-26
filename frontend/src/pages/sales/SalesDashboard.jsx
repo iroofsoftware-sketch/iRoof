@@ -67,11 +67,11 @@ const SalesDashboard = () => {
         });
 
         setFunnelData([
-          { label: 'New Enquiries', count: enquiries.length || 1, color: '#0b2e59' },
-          { label: 'Site Inspected', count: visited || 1, color: '#1d4ed8' },
-          { label: 'Commercial Estimates', count: estimates.length || 1, color: '#0284c7' },
-          { label: 'Work Orders Won', count: won || 1, color: '#c9940a' },
-          { label: 'Completed / Handover', count: completed || 1, color: '#15803d' }
+          { label: 'New Enquiries', count: enquiries.length, color: '#0b2e59' },
+          { label: 'Site Inspected', count: visited, color: '#1d4ed8' },
+          { label: 'Commercial Estimates', count: estimates.length, color: '#0284c7' },
+          { label: 'Work Orders Won', count: won, color: '#c9940a' },
+          { label: 'Completed / Handover', count: completed, color: '#15803d' }
         ]);
 
         // Enquiry status distribution
@@ -81,10 +81,10 @@ const SalesDashboard = () => {
         const appCount = enquiries.filter((e) => ['approved', 'completed'].includes(e.status)).length;
 
         setStageDonut([
-          { label: 'New Leads', count: newCount || 1, color: '#0b2e59' },
-          { label: 'Site Visited', count: visitedCount || 1, color: '#1d4ed8' },
-          { label: 'Quoted', count: estCount || 1, color: '#0284c7' },
-          { label: 'Approved / Won', count: appCount || 1, color: '#15803d' }
+          { label: 'New Leads', count: newCount, color: '#0b2e59' },
+          { label: 'Site Visited', count: visitedCount, color: '#1d4ed8' },
+          { label: 'Quoted', count: estCount, color: '#0284c7' },
+          { label: 'Approved / Won', count: appCount, color: '#15803d' }
         ]);
 
         const recent = enquiries.slice(0, 5).map((e) => ({

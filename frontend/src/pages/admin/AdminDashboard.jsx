@@ -41,6 +41,7 @@ const AdminDashboard = () => {
   const [recentActivities, setRecentActivities] = useState([]);
   const [funnelData, setFunnelData] = useState([]);
   const [donutData, setDonutData] = useState([]);
+  const [revenueData, setRevenueData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
 
@@ -58,17 +59,19 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const [usersRes, enqRes, estRes, woRes] = await Promise.all([
+        const [usersRes, enqRes, estRes, woRes, invRes] = await Promise.all([
           api.get('/admin/users').catch(() => ({ data: { users: [] } })),
           api.get('/enquiries').catch(() => ({ data: { enquiries: [] } })),
           api.get('/estimates').catch(() => ({ data: { estimates: [] } })),
-          api.get('/workorders').catch(() => ({ data: { data: [] } }))
+          api.get('/workorders').catch(() => ({ data: { data: [] } })),
+          api.get('/invoices').catch(() => ({ data: { data: [] } }))
         ]);
 
         const users = usersRes.data?.users || [];
         const enquiries = enqRes.data?.enquiries || [];
         const estimates = estRes.data?.estimates || [];
         const workOrders = woRes.data?.data || [];
+        const invoices = invRes.data?.data || [];
 
         setStats({
           usersCount: users.length,
@@ -87,11 +90,11 @@ const AdminDashboard = () => {
         const completedCount = workOrders.filter((w) => w.status === 'completed').length;
 
         setFunnelData([
-          { label: 'Total Enquiries', count: enquiries.length || 1, color: '#0b2e59' },
-          { label: 'Site Inspected', count: visitedCount || 1, color: '#1d4ed8' },
-          { label: 'Quoted Estimates', count: estimatedCount || 1, color: '#0284c7' },
-          { label: 'Work Orders Won', count: wonCount || 1, color: '#c9940a' },
-          { label: 'Handover Completed', count: completedCount || 1, color: '#15803d' }
+          { label: 'Total Enquiries', count: enquiries.length, color: '#0b2e59' },
+          { label: 'Site Inspected', count: visitedCount, color: '#1d4ed8' },
+          { label: 'Quoted Estimates', count: estimatedCount, color: '#0284c7' },
+          { label: 'Work Orders Won', count: wonCount, color: '#c9940a' },
+          { label: 'Handover Completed', count: completedCount, color: '#15803d' }
         ]);
 
         // Compute work order breakdown
@@ -101,11 +104,34 @@ const AdminDashboard = () => {
         const draftWO = workOrders.filter((w) => ['draft', 'pending'].includes(w.status)).length;
 
         setDonutData([
-          { label: 'Active Projects', count: activeWO || 1, color: '#0b2e59' },
-          { label: 'Completed', count: compWO || 1, color: '#15803d' },
-          { label: 'On Hold', count: holdWO || 0, color: '#d97706' },
-          { label: 'Drafted', count: draftWO || 0, color: '#64748b' }
+          { label: 'Active Projects', count: activeWO, color: '#0b2e59' },
+          { label: 'Completed', count: compWO, color: '#15803d' },
+          { label: 'On Hold', count: holdWO, color: '#d97706' },
+          { label: 'Drafted', count: draftWO, color: '#64748b' }
         ]);
+
+        // Dynamic trailing 6 months cashflow from real invoices
+        const months = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = dayjs().subtract(i, 'month');
+          months.push({
+            month: d.format('MMM'),
+            ym: d.format('YYYY-MM'),
+            billed: 0,
+            collected: 0
+          });
+        }
+        invoices.forEach((inv) => {
+          if (inv.createdAt && inv.status !== 'cancelled') {
+            const ym = dayjs(inv.createdAt).format('YYYY-MM');
+            const target = months.find((m) => m.ym === ym);
+            if (target) {
+              target.billed += Number(inv.grandTotal) || 0;
+              target.collected += Number(inv.amountPaid) || 0;
+            }
+          }
+        });
+        setRevenueData(months.map(({ month, billed, collected }) => ({ month, billed, collected })));
 
         // Combined activity feed with direct edit navigation
         const activities = [
@@ -356,7 +382,7 @@ const AdminDashboard = () => {
       {/* C) VISUAL ANALYTICS ROW */}
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={15}>
-          <RevenueAreaChart />
+          <RevenueAreaChart data={revenueData} />
         </Col>
         <Col xs={24} lg={9}>
           <ConversionFunnelChart stages={funnelData} />

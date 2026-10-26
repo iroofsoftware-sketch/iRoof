@@ -28,6 +28,7 @@ const AccountsDashboard = () => {
   });
   const [recentInvoices, setRecentInvoices] = useState([]);
   const [invoiceDonut, setInvoiceDonut] = useState([]);
+  const [revenueData, setRevenueData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const hour = new Date().getHours();
@@ -45,7 +46,7 @@ const AccountsDashboard = () => {
       setLoading(true);
       const [statsRes, invoicesRes] = await Promise.all([
         getInvoiceStats(),
-        getInvoices({ limit: 10 })
+        getInvoices({ limit: 100 })
       ]);
 
       if (statsRes.data?.success && statsRes.data.data) {
@@ -62,11 +63,33 @@ const AccountsDashboard = () => {
         const overdueCount = invs.filter((i) => i.status === 'overdue' || (i.amountDue > 0 && new Date(i.dueDate) < new Date())).length;
 
         setInvoiceDonut([
-          { label: 'Fully Paid', count: paidCount || 1, color: '#15803d' },
-          { label: 'Partially Paid', count: partialCount || 0, color: '#0284c7' },
-          { label: 'Pending Payment', count: sentCount || 1, color: '#d97706' },
-          { label: 'Overdue', count: overdueCount || 0, color: '#b91c1c' }
+          { label: 'Fully Paid', count: paidCount, color: '#15803d' },
+          { label: 'Partially Paid', count: partialCount, color: '#0284c7' },
+          { label: 'Pending Payment', count: sentCount, color: '#d97706' },
+          { label: 'Overdue', count: overdueCount, color: '#b91c1c' }
         ]);
+
+        const months = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = dayjs().subtract(i, 'month');
+          months.push({
+            month: d.format('MMM'),
+            ym: d.format('YYYY-MM'),
+            billed: 0,
+            collected: 0
+          });
+        }
+        invs.forEach((inv) => {
+          if (inv.createdAt && inv.status !== 'cancelled') {
+            const ym = dayjs(inv.createdAt).format('YYYY-MM');
+            const target = months.find((m) => m.ym === ym);
+            if (target) {
+              target.billed += Number(inv.grandTotal) || 0;
+              target.collected += Number(inv.amountPaid) || 0;
+            }
+          }
+        });
+        setRevenueData(months.map(({ month, billed, collected }) => ({ month, billed, collected })));
       }
     } catch (err) {
       console.error('Error fetching accounts dashboard data:', err);
@@ -250,6 +273,7 @@ const AccountsDashboard = () => {
           <RevenueAreaChart
             title="Commercial Billing vs Realized Collections"
             subtitle="Trailing 6-month cashflow velocity and realization rate"
+            data={revenueData}
           />
         </Col>
         <Col xs={24} lg={9}>

@@ -13,15 +13,13 @@ const formatINR = (val) => {
 export const RevenueAreaChart = ({
   title = 'Commercial Cashflow & Revenue Velocity',
   subtitle = 'Monthly comparison of billed contracts vs cash collected',
-  data = [
-    { month: 'May', billed: 420000, collected: 310000 },
-    { month: 'Jun', billed: 680000, collected: 520000 },
-    { month: 'Jul', billed: 890000, collected: 710000 },
-    { month: 'Aug', billed: 640000, collected: 620000 },
-    { month: 'Sep', billed: 1120000, collected: 890000 },
-    { month: 'Oct', billed: 1480000, collected: 1190000 }
-  ]
+  data: propData
 }) => {
+  const defaultMonths = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+  const data = (propData && propData.length > 0)
+    ? propData
+    : defaultMonths.map((m) => ({ month: m, billed: 0, collected: 0 }));
+
   const [hoverIndex, setHoverIndex] = useState(null);
 
   const width = 640;
@@ -31,10 +29,8 @@ export const RevenueAreaChart = ({
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  const maxVal = Math.max(
-    ...data.map((d) => Math.max(d.billed || 0, d.collected || 0)),
-    100000
-  ) * 1.15;
+  const allMax = Math.max(...data.map((d) => Math.max(d.billed || 0, d.collected || 0)), 0);
+  const maxVal = allMax > 0 ? allMax * 1.15 : 100000;
 
   const getX = (index) => padding.left + (index / (data.length - 1)) * chartWidth;
   const getY = (val) => padding.top + chartHeight - (val / maxVal) * chartHeight;
