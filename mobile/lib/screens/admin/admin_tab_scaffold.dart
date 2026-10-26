@@ -315,7 +315,26 @@ class _AdminTabScaffoldState extends State<AdminTabScaffold> {
             ],
           ),
           const SizedBox(height: 8),
-          ListView.separated(
+          if (_workOrders.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.assignment_outlined, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text('No Work Orders Yet', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primaryNavy)),
+                  const SizedBox(height: 6),
+                  const Text('Production contracts and manufacturing orders will be listed here.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                ],
+              ),
+            )
+          else
+            ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _workOrders.length,
@@ -375,7 +394,26 @@ class _AdminTabScaffoldState extends State<AdminTabScaffold> {
             ],
           ),
           const SizedBox(height: 8),
-          ListView.separated(
+          if (_enquiries.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.contact_mail_outlined, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text('No Enquiries Found', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primaryNavy)),
+                  const SizedBox(height: 6),
+                  const Text('Client consultations and incoming enquiries will appear here.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                ],
+              ),
+            )
+          else
+            ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _enquiries.length,

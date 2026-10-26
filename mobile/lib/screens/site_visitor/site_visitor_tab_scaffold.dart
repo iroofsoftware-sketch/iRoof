@@ -156,9 +156,22 @@ class _SiteVisitorTabScaffoldState extends State<SiteVisitorTabScaffold> {
           ),
           const SizedBox(height: 8),
           if (_visits.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(40),
-              child: Center(child: Text('No assigned visits found. Pull down to refresh.')),
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.assignment_outlined, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text('No Assigned Visits', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primaryNavy)),
+                  const SizedBox(height: 6),
+                  const Text('Field site visits assigned to your profile by the Project Manager will show here.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                ],
+              ),
             )
           else
             ListView.separated(
@@ -260,7 +273,26 @@ class _SiteVisitorTabScaffoldState extends State<SiteVisitorTabScaffold> {
             ],
           ),
           const SizedBox(height: 8),
-          ListView.separated(
+          if (_workOrders.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.engineering_outlined, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text('No Active Work Orders', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primaryNavy)),
+                  const SizedBox(height: 6),
+                  const Text('Company structural roofing work orders and site specs will appear here.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                ],
+              ),
+            )
+          else
+            ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _workOrders.length,

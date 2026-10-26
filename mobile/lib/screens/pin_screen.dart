@@ -53,6 +53,11 @@ class _PinScreenState extends State<PinScreen> {
           dest = AdminTabScaffold(user: widget.user);
           break;
         case 'projectmanager':
+        case 'sales':
+        case 'accounts':
+        case 'purchase':
+        case 'workshop':
+        case 'design':
           dest = PmTabScaffold(user: widget.user);
           break;
         case 'sitevisitor':
