@@ -20,6 +20,9 @@ const {
   deleteSection
 } = require('../controllers/rateController');
 
+// Authenticate all admin routes
+router.use(protect);
+
 // User Management Routes (Admin only)
 router.get('/users', authorize('admin'), getUsers);
 router.post('/users', authorize('admin'), createUser);

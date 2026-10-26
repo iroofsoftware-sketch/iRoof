@@ -146,6 +146,9 @@ function App() {
               <Route path="/admin/rates" element={<RateMastersPage />} />
               <Route path="/admin/enquiries" element={<EnquiriesPage />} />
               <Route path="/admin/estimates" element={<SavedEstimatesPage />} />
+              <Route path="/admin/estimates/new" element={<EstimationPage />} />
+              <Route path="/admin/estimates/:id" element={<EstimationPage />} />
+              <Route path="/admin/estimates/:id/quotation" element={<CustomerQuotationView />} />
               <Route path="/admin/suppliers" element={<SuppliersPage />} />
             </Route>
 

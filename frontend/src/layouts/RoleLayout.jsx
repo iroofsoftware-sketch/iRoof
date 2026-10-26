@@ -14,7 +14,8 @@ import {
   List,
   Tag,
   Empty,
-  Spin
+  Spin,
+  Select
 } from 'antd';
 import axios from '../services/api';
 import {
@@ -82,7 +83,8 @@ const getRoleMenuConfig = (role) => {
         { key: '/admin/section-masters', icon: <AppstoreOutlined />, label: 'Section Masters' },
         { key: '/admin/suppliers', icon: <ShopOutlined />, label: 'Suppliers' },
         { key: '/admin/enquiries', icon: <FileSearchOutlined />, label: 'All Enquiries' },
-        { key: '/admin/estimates', icon: <CalculatorOutlined />, label: 'All Estimates' }
+        { key: '/sales/estimates/new', icon: <CalculatorOutlined />, label: 'New Estimate' },
+        { key: '/admin/estimates', icon: <FolderOpenOutlined />, label: 'All Estimates' }
       ];
 
     case 'sales':
@@ -255,16 +257,28 @@ const RoleLayout = () => {
     navigate('/login', { replace: true });
   };
 
-  const menuItems = getRoleMenuConfig(role || 'admin');
+  // Determine active department section. If user is Admin, dynamically adapt based on current path
+  const activeRoleSection = (role === 'admin')
+    ? (location.pathname.startsWith('/sales') ? 'sales'
+      : location.pathname.startsWith('/accounts') ? 'accounts'
+      : location.pathname.startsWith('/design') ? 'design'
+      : location.pathname.startsWith('/projectmanager') ? 'projectmanager'
+      : location.pathname.startsWith('/purchase') ? 'purchase'
+      : location.pathname.startsWith('/workshop') ? 'workshop'
+      : location.pathname.startsWith('/sitevisitor') ? 'sitevisitor'
+      : 'admin')
+    : role;
+
+  const menuItems = getRoleMenuConfig(activeRoleSection || 'admin');
 
   // Match active item
   const selectedKey =
-    menuItems.find((m) => m.key === location.pathname || (m.key !== `/${role}` && location.pathname.startsWith(m.key)))?.key ||
+    menuItems.find((m) => m.key === location.pathname || (m.key !== `/${activeRoleSection}` && location.pathname.startsWith(m.key)))?.key ||
     location.pathname;
 
   const currentItem = menuItems.find((m) => m.key === selectedKey);
   const pageTitle = currentItem?.label || 'Workspace';
-  const sectionName = roleDepartmentTitles[role] || 'Enterprise';
+  const sectionName = roleDepartmentTitles[activeRoleSection] || 'Enterprise';
 
   const userInitials = user?.name
     ? user.name
@@ -606,6 +620,28 @@ const RoleLayout = () => {
                 {pageTitle}
               </div>
             </div>
+
+            {/* Admin Department Switcher */}
+            {role === 'admin' && !isMobile && (
+              <div style={{ marginLeft: 16, paddingLeft: 16, borderLeft: '1px solid #e2e8f0' }}>
+                <Select
+                  size="small"
+                  value={activeRoleSection}
+                  onChange={(dept) => navigate(`/${dept}`)}
+                  style={{ width: 180, fontSize: 12 }}
+                  options={[
+                    { value: 'admin', label: 'Administration Console' },
+                    { value: 'sales', label: 'Sales & Estimations' },
+                    { value: 'accounts', label: 'Accounts & Finance' },
+                    { value: 'projectmanager', label: 'Project Management' },
+                    { value: 'design', label: 'Design & Drawings' },
+                    { value: 'purchase', label: 'Purchase & Orders' },
+                    { value: 'workshop', label: 'Workshop & Jobs' },
+                    { value: 'sitevisitor', label: 'Site Operations' }
+                  ]}
+                />
+              </div>
+            )}
           </div>
 
           {/* RIGHT: Actions & User */}
