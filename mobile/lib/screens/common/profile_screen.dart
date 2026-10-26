@@ -410,15 +410,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile & Security', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        backgroundColor: AppColors.primaryDark,
+        titleSpacing: 18,
+        title: const Text(
+          'Profile & Security',
+          style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+        ),
+        backgroundColor: AppColors.primaryNavy,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Server Gateway',
+            icon: const Icon(Icons.tune_outlined, size: 20),
+            tooltip: 'Server Settings',
             onPressed: () => ServerConfigDialog.show(context),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: ListView(

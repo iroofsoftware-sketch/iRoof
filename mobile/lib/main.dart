@@ -41,10 +41,69 @@ class IRoofMobileApp extends StatelessWidget {
           seedColor: AppColors.primaryNavy,
           primary: AppColors.primaryNavy,
           secondary: AppColors.accentGold,
-          surface: AppColors.background,
+          surface: AppColors.surface,
+          surfaceContainerLowest: AppColors.background,
         ),
         scaffoldBackgroundColor: AppColors.background,
         fontFamily: 'Roboto',
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.primaryNavy,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleTextStyle: TextStyle(
+            fontSize: 16.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+            color: Colors.white,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          color: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          margin: EdgeInsets.zero,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.surface,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          labelStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.primaryNavy, width: 1.6),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryNavy,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: AppColors.surface,
+          selectedItemColor: AppColors.primaryNavy,
+          unselectedItemColor: AppColors.textMuted,
+          selectedLabelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+          unselectedLabelStyle: TextStyle(fontSize: 11),
+          type: BottomNavigationBarType.fixed,
+          elevation: 12,
+        ),
       ),
       home: initialUser != null
           ? _getDestination(initialUser!)
@@ -55,9 +114,9 @@ class IRoofMobileApp extends StatelessWidget {
   static Widget _getDestination(UserModel user) {
     switch (user.role.toLowerCase()) {
       case 'admin':
+      case 'sales':
         return AdminTabScaffold(user: user);
       case 'projectmanager':
-      case 'sales':
       case 'accounts':
       case 'purchase':
       case 'workshop':

@@ -56,8 +56,12 @@ class _QuickEstimatorScreenState extends State<QuickEstimatorScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Field Roof Calculator', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-        backgroundColor: AppColors.primaryDark,
+        titleSpacing: 18,
+        title: const Text(
+          'Field Roof Estimator',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5, letterSpacing: -0.3),
+        ),
+        backgroundColor: AppColors.primaryNavy,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(

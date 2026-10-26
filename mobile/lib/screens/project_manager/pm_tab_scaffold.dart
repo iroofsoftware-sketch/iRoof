@@ -69,28 +69,43 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        titleSpacing: 18,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('iRoofing · PM Control', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-            Text('PM: ${widget.user.name}', style: const TextStyle(fontSize: 11, color: Colors.white70)),
+            const Text(
+              'iRoofing · Project Operations',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5, letterSpacing: -0.3),
+            ),
+            Text(
+              '${widget.user.name} (${widget.user.role.toUpperCase()})',
+              style: const TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
         backgroundColor: AppColors.primaryNavy,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.calculate_outlined),
-            tooltip: 'Roof Estimator',
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.calculate_outlined, color: AppColors.accentGold, size: 18),
+            ),
+            tooltip: 'Field Roof Estimator',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const QuickEstimatorScreen()),
             ),
           ),
           Stack(
+            alignment: Alignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_none),
+                icon: const Icon(Icons.notifications_none_rounded, size: 22),
                 tooltip: 'Notifications',
                 onPressed: () {
                   NotificationsSheet.show(context);
@@ -99,8 +114,8 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
               ),
               if (_unreadNotifications > 0)
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: 10,
+                  right: 10,
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(color: AppColors.accentGold, shape: BoxShape.circle),
@@ -113,10 +128,11 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
             ],
           ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(Icons.tune_outlined, size: 20),
             tooltip: 'Server Settings',
             onPressed: () => ServerConfigDialog.show(context),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: IndexedStack(
@@ -128,20 +144,35 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
           _buildProfileTab(),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primaryNavy,
-        unselectedItemColor: Colors.grey.shade500,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Work Orders'),
-          BottomNavigationBarItem(icon: Icon(Icons.fact_check_outlined), activeIcon: Icon(Icons.fact_check), label: 'Site Reports'),
-          BottomNavigationBarItem(icon: Icon(Icons.draw_outlined), activeIcon: Icon(Icons.draw), label: 'Gate 4 Review'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: AppColors.border, width: 0.8)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          selectedItemColor: AppColors.primaryNavy,
+          unselectedItemColor: AppColors.textMuted,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard_rounded), label: 'Work Orders'),
+            BottomNavigationBarItem(icon: Icon(Icons.fact_check_outlined), activeIcon: Icon(Icons.fact_check_rounded), label: 'Site Reports'),
+            BottomNavigationBarItem(icon: Icon(Icons.draw_outlined), activeIcon: Icon(Icons.draw_rounded), label: 'Gate 4 Review'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), activeIcon: Icon(Icons.person_rounded), label: 'Profile'),
+          ],
+        ),
       ),
     );
   }
