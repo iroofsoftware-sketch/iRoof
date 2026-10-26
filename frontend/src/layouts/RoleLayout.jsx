@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Layout,
   Menu,
@@ -7,8 +7,13 @@ import {
   Dropdown,
   Space,
   Drawer,
-  Breadcrumb
+  Breadcrumb,
+  Badge,
+  List,
+  Typography,
+  Empty
 } from 'antd';
+import axios from '../services/api';
 import {
   DashboardOutlined,
   TeamOutlined,
@@ -65,13 +70,15 @@ const getRoleMenuConfig = (role) => {
         { key: '/sales', icon: <DashboardOutlined />, label: 'Dashboard' },
         { key: '/sales/enquiries', icon: <FileTextOutlined />, label: 'Enquiries' },
         { key: '/sales/estimates/new', icon: <CalculatorOutlined />, label: 'New Estimate' },
-        { key: '/sales/estimates', icon: <FolderOpenOutlined />, label: 'Saved Estimates' }
+        { key: '/sales/estimates', icon: <FolderOpenOutlined />, label: 'Saved Estimates' },
+        { key: '/customers', icon: <TeamOutlined />, label: 'Customers' }
       ];
 
     case 'accounts':
       return [
         { key: '/accounts', icon: <DashboardOutlined />, label: 'Dashboard' },
-        { key: '/accounts/invoices', icon: <AccountBookOutlined />, label: 'Invoices' }
+        { key: '/accounts/invoices', icon: <AccountBookOutlined />, label: 'Invoices & Payments' },
+        { key: '/customers', icon: <TeamOutlined />, label: 'Customers' }
       ];
 
     case 'design':
@@ -114,10 +121,35 @@ const RoleLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifDrawer, setNotifDrawer] = useState(false);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const r = await axios.get('/notifications?limit=20');
+      setNotifications(r.data.data || []);
+      setUnreadCount(r.data.unreadCount || 0);
+    } catch { /* silent */ }
+  }, []);
+
+  const markAllRead = async () => {
+    try {
+      await axios.patch('/notifications/mark-all-read');
+      setUnreadCount(0);
+      setNotifications(n => n.map(x => ({ ...x, isRead: true })));
+    } catch { /* silent */ }
+  };
 
   const navigate = useNavigate();
   const location = useLocation();
   const { user, role, logout } = useAuthStore();
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 30000); // poll every 30s
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -377,12 +409,15 @@ const RoleLayout = () => {
               style={{ color: '#6b7280', fontSize: 16 }}
               aria-label="Search"
             />
-            <Button
-              type="text"
-              icon={<BellOutlined />}
-              style={{ color: '#6b7280', fontSize: 16 }}
-              aria-label="Notifications"
-            />
+            <Badge count={unreadCount} size="small" offset={[-2, 2]}>
+              <Button
+                type="text"
+                icon={<BellOutlined />}
+                style={{ color: '#6b7280', fontSize: 16 }}
+                aria-label="Notifications"
+                onClick={() => { setNotifDrawer(true); loadNotifications(); }}
+              />
+            </Badge>
 
             <div style={{ width: 1, height: 20, background: '#dde3ea' }} />
 
@@ -420,6 +455,50 @@ const RoleLayout = () => {
           </div>
         </Content>
       </Layout>
+
+      {/* Notifications Drawer */}
+      <Drawer
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Notifications {unreadCount > 0 && <Badge count={unreadCount} style={{ marginLeft: 8 }} />}</span>
+            {unreadCount > 0 && <Button size="small" onClick={markAllRead}>Mark all read</Button>}
+          </div>
+        }
+        open={notifDrawer}
+        onClose={() => setNotifDrawer(false)}
+        width={380}
+        styles={{ body: { padding: 0 } }}
+      >
+        {notifications.length === 0 ? (
+          <Empty description="No notifications" style={{ marginTop: 60 }} />
+        ) : (
+          <List
+            dataSource={notifications}
+            renderItem={item => (
+              <List.Item
+                style={{
+                  padding: '12px 16px',
+                  background: item.isRead ? '#fff' : '#eff6ff',
+                  borderLeft: item.isRead ? 'none' : '3px solid #0b315d',
+                  cursor: 'default'
+                }}
+              >
+                <List.Item.Meta
+                  title={<Typography.Text strong={!item.isRead}>{item.title}</Typography.Text>}
+                  description={
+                    <div>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.message}</Typography.Text>
+                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+                        {new Date(item.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Drawer>
 
       <style>{`
         .sidebar-logout-btn:hover {

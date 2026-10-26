@@ -58,6 +58,10 @@ app.use('/api/design-tasks', require('./src/routes/designTaskRoutes'));
 app.use('/api/purchase-requests', require('./src/routes/purchaseRequestRoutes'));
 app.use('/api/workshop-jobs', require('./src/routes/workshopJobRoutes'));
 app.use('/api/site-visits', require('./src/routes/siteVisitRoutes'));
+app.use('/api/notifications', require('./src/routes/notificationRoutes'));
+app.use('/api/search', require('./src/routes/searchRoutes'));
+app.use('/api/invoices', require('./src/routes/invoiceRoutes'));
+app.use('/api/customers', require('./src/routes/customerRoutes'));
 
 // 404 handler
 app.use((req, res) => {

@@ -5,22 +5,27 @@ const WorkshopJob = require('../models/WorkshopJob');
 const SiteVisit = require('../models/SiteVisit');
 const Estimate = require('../models/Estimate');
 const { Enquiry } = require('../models/Enquiry');
+const Notification = require('../models/Notification');
+
+// Helper: create notification
+const notify = async ({ title, message, type = 'info', targetRoles, relatedId, createdBy }) => {
+  try {
+    await Notification.create({ title, message, type, targetRoles, relatedId, relatedModel: 'WorkOrder', createdBy });
+  } catch (e) {
+    console.error('Notification error:', e.message);
+  }
+};
 
 // @desc    Get all work orders
 // @route   GET /api/workorders
-// @access  Private (admin, projectmanager)
+// @access  Private (admin, projectmanager, accounts, design, purchase, workshop)
 const getWorkOrders = async (req, res) => {
   try {
     const { status, priority, search, limit, page } = req.query;
     const filter = {};
 
-    if (status && status !== 'all') {
-      filter.status = status;
-    }
-
-    if (priority && priority !== 'all') {
-      filter.priority = priority;
-    }
+    if (status && status !== 'all') filter.status = status;
+    if (priority && priority !== 'all') filter.priority = priority;
 
     if (search && search.trim()) {
       const q = search.trim();
@@ -36,344 +41,322 @@ const getWorkOrders = async (req, res) => {
       .populate('estimateId', 'model inputData results status')
       .populate('createdBy', 'name email')
       .populate('assignedPM', 'name email')
+      .populate('stageHistory.performedBy', 'name')
       .sort({ createdAt: -1 });
 
-    if (limit) {
-      query.limit(Number(limit));
-    }
-    if (page && limit) {
-      query.skip((Number(page) - 1) * Number(limit));
-    }
+    if (limit) query.limit(Number(limit));
+    if (page && limit) query.skip((Number(page) - 1) * Number(limit));
 
     const [workOrders, total] = await Promise.all([
       query.exec(),
       WorkOrder.countDocuments(filter)
     ]);
 
-    return res.status(200).json({
-      success: true,
-      count: workOrders.length,
-      total,
-      data: workOrders
-    });
+    return res.status(200).json({ success: true, count: workOrders.length, total, data: workOrders });
   } catch (error) {
     console.error('Error fetching work orders:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve work orders',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Get single work order with all linked tasks
-// @route   GET /api/workorders/:id
-// @access  Private (admin, projectmanager)
-const getWorkOrderById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const workOrder = await WorkOrder.findById(id)
-      .populate('enquiryId', 'clientName phone email address roofType notes')
-      .populate('estimateId')
-      .populate('createdBy', 'name email')
-      .populate('assignedPM', 'name email');
-
-    if (!workOrder) {
-      return res.status(404).json({
-        success: false,
-        message: 'Work order not found'
-      });
-    }
-
-    // Find linked child documents
-    const [designTask, purchaseRequest, workshopJob, siteVisit] = await Promise.all([
-      DesignTask.findOne({ workOrderId: workOrder._id }).populate('assignedTo', 'name email'),
-      PurchaseRequest.findOne({ workOrderId: workOrder._id }).populate('assignedTo', 'name email'),
-      WorkshopJob.findOne({ workOrderId: workOrder._id }).populate('assignedTo', 'name email'),
-      SiteVisit.findOne({ workOrderId: workOrder._id }).populate('assignedTo', 'name email')
-    ]);
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        ...workOrder.toObject(),
-        designTask,
-        purchaseRequest,
-        workshopJob,
-        siteVisit
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching work order by id:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve work order details',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Create new work order from an approved estimate
-// @route   POST /api/workorders
-// @access  Private (admin, projectmanager)
-const createWorkOrder = async (req, res) => {
-  try {
-    const { estimateId, targetDate, priority, notes, assignedPM } = req.body;
-
-    if (!estimateId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Estimate ID is required to create a work order'
-      });
-    }
-
-    const estimate = await Estimate.findById(estimateId).populate('enquiryId');
-    if (!estimate) {
-      return res.status(404).json({
-        success: false,
-        message: 'Source estimate not found'
-      });
-    }
-
-    const enquiry = estimate.enquiryId || {};
-    const inputData = estimate.inputData || {};
-    const results = estimate.results || {};
-    const costs = results.costs || {};
-
-    const clientName = enquiry.clientName || 'General Client';
-    const siteAddress = enquiry.address || 'Site Location';
-    const roofModel = estimate.model || 'Standard Model';
-    const span = inputData.span || results.span || 0;
-    const length = inputData.length || results.length || 0;
-    const height = inputData.height || results.height || 0;
-    const grandTotal = costs.grandTotal || costs.beforeGst || 0;
-
-    // 1. Create Work Order
-    const workOrder = new WorkOrder({
-      enquiryId: estimate.enquiryId?._id || estimate.enquiryId,
-      estimateId: estimate._id,
-      clientName,
-      siteAddress,
-      roofModel,
-      span,
-      length,
-      height,
-      grandTotal,
-      status: 'active',
-      priority: priority || 'medium',
-      targetDate: targetDate || undefined,
-      notes: notes || '',
-      createdBy: req.user._id,
-      assignedPM: assignedPM || req.user._id
-    });
-
-    await workOrder.save();
-
-    // 2. Auto-generate Design Task
-    const designTask = await DesignTask.create({
-      workOrderId: workOrder._id,
-      title: `Structural Drawings — ${workOrder.refCode}`,
-      description: `Prepare structural fabrication & erection drawings for ${roofModel} (${span}m x ${length}m)`,
-      status: 'pending',
-      dueDate: targetDate || undefined,
-      createdBy: req.user._id
-    });
-
-    // 3. Auto-generate Purchase Request with prefilled materials
-    const purchaseItems = [
-      {
-        name: `Roofing Sheets (${results.th || 0.6}mm BMT Profile)`,
-        quantity: Math.round(results.sheetKg || (span * length * 4.5)),
-        unit: 'kg',
-        estimatedCost: costs.sheetCost || 0,
-        notes: `${results.panels || 0} panels cut to ${results.finalCut?.toFixed(2) || 0}m`
-      },
-      {
-        name: 'Structural Steel Sections & Tubes',
-        quantity: Math.round(results.sheetKg || (span * length * 5)),
-        unit: 'kg',
-        estimatedCost: costs.labourCost || 0,
-        notes: `${results.bays || 1} bays, ${results.ncol || 2} columns`
-      },
-      {
-        name: 'Hardware, Fasteners & Silicone Sealants',
-        quantity: 1,
-        unit: 'set',
-        estimatedCost: costs.consumables || 0,
-        notes: 'Standard installation kit'
-      }
-    ];
-
-    const purchaseRequest = await PurchaseRequest.create({
-      workOrderId: workOrder._id,
-      items: purchaseItems,
-      status: 'pending',
-      totalEstimate: grandTotal,
-      notes: `Materials for ${roofModel}`,
-      createdBy: req.user._id
-    });
-
-    // 4. Auto-generate Workshop Job
-    const workshopJob = await WorkshopJob.create({
-      workOrderId: workOrder._id,
-      title: `Fabrication — ${workOrder.refCode}`,
-      description: `Fabricate structural frames, trusses, and baseplates for ${clientName}`,
-      status: 'pending',
-      startDate: new Date(),
-      endDate: targetDate || undefined,
-      createdBy: req.user._id
-    });
-
-    // 5. Auto-generate Site Visit Schedule
-    const siteVisit = await SiteVisit.create({
-      workOrderId: workOrder._id,
-      visitType: 'initial',
-      scheduledDate: targetDate || new Date(),
-      status: 'scheduled',
-      notes: `Site kickoff & alignment check for ${clientName}`,
-      createdBy: req.user._id
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: 'Work order created and child tasks generated successfully',
-      workOrder,
-      designTask,
-      purchaseRequest,
-      workshopJob,
-      siteVisit
-    });
-  } catch (error) {
-    console.error('Error creating work order:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to create work order',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Update work order
-// @route   PATCH /api/workorders/:id
-// @access  Private (admin, projectmanager)
-const updateWorkOrder = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, priority, targetDate, notes, assignedPM } = req.body;
-
-    const workOrder = await WorkOrder.findById(id);
-    if (!workOrder) {
-      return res.status(404).json({
-        success: false,
-        message: 'Work order not found'
-      });
-    }
-
-    if (status) workOrder.status = status;
-    if (priority) workOrder.priority = priority;
-    if (targetDate !== undefined) workOrder.targetDate = targetDate;
-    if (notes !== undefined) workOrder.notes = notes;
-    if (assignedPM) workOrder.assignedPM = assignedPM;
-
-    await workOrder.save();
-
-    const populated = await WorkOrder.findById(id)
-      .populate('enquiryId', 'clientName phone')
-      .populate('assignedPM', 'name email');
-
-    return res.status(200).json({
-      success: true,
-      message: 'Work order updated successfully',
-      data: populated
-    });
-  } catch (error) {
-    console.error('Error updating work order:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to update work order',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Delete work order and cascade child documents
-// @route   DELETE /api/workorders/:id
-// @access  Private (admin only)
-const deleteWorkOrder = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const workOrder = await WorkOrder.findByIdAndDelete(id);
-    if (!workOrder) {
-      return res.status(404).json({
-        success: false,
-        message: 'Work order not found'
-      });
-    }
-
-    // Cascade delete child tasks
-    await Promise.all([
-      DesignTask.deleteMany({ workOrderId: id }),
-      PurchaseRequest.deleteMany({ workOrderId: id }),
-      WorkshopJob.deleteMany({ workOrderId: id }),
-      SiteVisit.deleteMany({ workOrderId: id })
-    ]);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Work order and all associated tasks deleted'
-    });
-  } catch (error) {
-    console.error('Error deleting work order:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to delete work order',
-      error: error.message
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // @desc    Get work order stats
 // @route   GET /api/workorders/stats
-// @access  Private (admin, projectmanager)
 const getWorkOrderStats = async (req, res) => {
   try {
-    const [total, draft, active, on_hold, completed, cancelled] = await Promise.all([
-      WorkOrder.countDocuments(),
-      WorkOrder.countDocuments({ status: 'draft' }),
-      WorkOrder.countDocuments({ status: 'active' }),
-      WorkOrder.countDocuments({ status: 'on_hold' }),
-      WorkOrder.countDocuments({ status: 'completed' }),
-      WorkOrder.countDocuments({ status: 'cancelled' })
-    ]);
+    const pipeline = [
+      { $group: { _id: '$status', count: { $sum: 1 }, totalValue: { $sum: '$grandTotal' } } }
+    ];
+    const stats = await WorkOrder.aggregate(pipeline);
+    const total = await WorkOrder.countDocuments();
+    const totalValue = await WorkOrder.aggregate([{ $group: { _id: null, sum: { $sum: '$grandTotal' } } }]);
 
     return res.status(200).json({
       success: true,
       data: {
+        byStatus: stats,
         total,
-        draft,
-        active,
-        on_hold,
-        completed,
-        cancelled
+        totalPipelineValue: totalValue[0]?.sum || 0,
       }
     });
   } catch (error) {
-    console.error('Error fetching work order stats:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch work order stats',
-      error: error.message
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get single work order
+// @route   GET /api/workorders/:id
+const getWorkOrderById = async (req, res) => {
+  try {
+    const wo = await WorkOrder.findById(req.params.id)
+      .populate('enquiryId')
+      .populate('estimateId')
+      .populate('createdBy', 'name email role')
+      .populate('assignedPM', 'name email')
+      .populate('accountsApproval.approvedBy', 'name')
+      .populate('materialsVerified.verifiedBy', 'name')
+      .populate('stageHistory.performedBy', 'name role')
+      .populate('logNotes.addedBy', 'name role');
+
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Create work order (basic)
+// @route   POST /api/workorders
+const createWorkOrder = async (req, res) => {
+  try {
+    const wo = await WorkOrder.create({ ...req.body, createdBy: req.user._id });
+    return res.status(201).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update work order (basic patch)
+// @route   PATCH /api/workorders/:id
+const updateWorkOrder = async (req, res) => {
+  try {
+    const wo = await WorkOrder.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Delete work order
+// @route   DELETE /api/workorders/:id
+const deleteWorkOrder = async (req, res) => {
+  try {
+    const wo = await WorkOrder.findByIdAndDelete(req.params.id);
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    return res.status(200).json({ success: true, message: 'Work order deleted' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── STAGE GATE ENDPOINTS ────────────────────────────────────────────────────
+
+// GATE 1: Sales issues WO from estimate
+// POST /api/workorders/issue-from-sales
+const issueFromSales = async (req, res) => {
+  try {
+    const { estimateId, enquiryId, clientName, siteAddress, roofModel, grandTotal, span, length, height, priority, targetDate, notes, assignedPM } = req.body;
+
+    const wo = await WorkOrder.create({
+      estimateId, enquiryId, clientName, siteAddress, roofModel, grandTotal, span, length, height,
+      priority, targetDate, notes, assignedPM,
+      status: 'pending_accounts',
+      createdBy: req.user._id,
+      stageHistory: [{ stage: 'Gate 1', action: 'WO issued by Sales', performedBy: req.user._id, note: notes }],
     });
+
+    // Update estimate status
+    await Estimate.findByIdAndUpdate(estimateId, { status: 'work_order_issued' });
+
+    await notify({ title: 'New Work Order Issued', message: `WO ${wo.refCode} for ${clientName} requires accounts approval.`, type: 'info', targetRoles: ['accounts', 'admin'], relatedId: wo._id, createdBy: req.user._id });
+
+    return res.status(201).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GATE 2: Accounts approves WO
+// POST /api/workorders/:id/accounts-approve
+const accountsApprove = async (req, res) => {
+  try {
+    const { note } = req.body;
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    if (wo.status !== 'pending_accounts') return res.status(400).json({ success: false, message: `WO is not in pending_accounts state (current: ${wo.status})` });
+
+    wo.status = 'accounts_approved';
+    wo.accountsApproval = { approvedBy: req.user._id, approvedAt: new Date(), note };
+    wo.stageHistory.push({ stage: 'Gate 2', action: 'Approved by Accounts', performedBy: req.user._id, note });
+    await wo.save();
+
+    await notify({ title: 'WO Accounts Approved', message: `${wo.refCode} approved — Design team please submit drawings.`, type: 'success', targetRoles: ['design', 'projectmanager', 'admin'], relatedId: wo._id, createdBy: req.user._id });
+
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GATE 3: Design submits drawings + BOM
+// POST /api/workorders/:id/design-submit
+const designSubmit = async (req, res) => {
+  try {
+    const { materialList, drawingFiles, note } = req.body;
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    if (wo.status !== 'accounts_approved') return res.status(400).json({ success: false, message: `WO is not in accounts_approved state` });
+
+    wo.status = 'design_submitted';
+    if (materialList) wo.materialList = materialList;
+    if (drawingFiles) wo.drawingFiles = drawingFiles;
+    wo.stageHistory.push({ stage: 'Gate 3', action: 'Design & BOM submitted', performedBy: req.user._id, note });
+    await wo.save();
+
+    await notify({ title: 'Design Submitted', message: `${wo.refCode} design drawings ready for PM review.`, type: 'info', targetRoles: ['projectmanager', 'admin'], relatedId: wo._id, createdBy: req.user._id });
+
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GATE 4: PM reviews design (approve → purchase, or revise → back to design)
+// POST /api/workorders/:id/pm-review
+const pmReview = async (req, res) => {
+  try {
+    const { action, revisionNotes, note } = req.body; // action: 'approve' | 'revise'
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    if (!['design_submitted', 'pm_review'].includes(wo.status)) return res.status(400).json({ success: false, message: 'WO not in reviewable state' });
+
+    if (action === 'revise') {
+      wo.status = 'accounts_approved'; // sends back to design
+      wo.revisionNotes = revisionNotes;
+      wo.stageHistory.push({ stage: 'Gate 4', action: 'PM requested revision', performedBy: req.user._id, note: revisionNotes || note });
+      await wo.save();
+      await notify({ title: 'Design Revision Requested', message: `${wo.refCode}: PM has requested design revision.`, type: 'warning', targetRoles: ['design', 'admin'], relatedId: wo._id, createdBy: req.user._id });
+    } else {
+      wo.status = 'pm_review'; // approved → ready for purchase
+      wo.stageHistory.push({ stage: 'Gate 4', action: 'Design approved by PM', performedBy: req.user._id, note });
+      await wo.save();
+      await notify({ title: 'Design Approved by PM', message: `${wo.refCode} ready for purchase ordering.`, type: 'success', targetRoles: ['purchase', 'admin'], relatedId: wo._id, createdBy: req.user._id });
+    }
+
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GATE 5: Purchase confirms order placed
+// POST /api/workorders/:id/purchase-ordered
+const purchaseOrdered = async (req, res) => {
+  try {
+    const { note } = req.body;
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    if (wo.status !== 'pm_review') return res.status(400).json({ success: false, message: `WO is not in pm_review state` });
+
+    wo.status = 'purchase_ordered';
+    wo.stageHistory.push({ stage: 'Gate 5', action: 'Purchase order placed', performedBy: req.user._id, note });
+    await wo.save();
+
+    await notify({ title: 'Materials Ordered', message: `${wo.refCode}: Materials ordered. Workshop please verify GRN on delivery.`, type: 'info', targetRoles: ['workshop', 'admin'], relatedId: wo._id, createdBy: req.user._id });
+
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GATE 6A: Workshop verifies material delivery (GRN)
+// POST /api/workorders/:id/workshop-verify-materials
+const workshopVerifyMaterials = async (req, res) => {
+  try {
+    const { note } = req.body;
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    if (wo.status !== 'purchase_ordered') return res.status(400).json({ success: false, message: 'WO not in purchase_ordered state' });
+
+    wo.status = 'materials_verified';
+    wo.materialsVerified = { verifiedBy: req.user._id, verifiedAt: new Date(), note };
+    wo.stageHistory.push({ stage: 'Gate 6A', action: 'Materials GRN verified', performedBy: req.user._id, note });
+    await wo.save();
+
+    await notify({ title: 'Materials Verified (GRN)', message: `${wo.refCode}: Materials received and verified. Ready to start fabrication.`, type: 'success', targetRoles: ['projectmanager', 'admin', 'workshop'], relatedId: wo._id, createdBy: req.user._id });
+
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GATE 6B: Workshop starts fabrication
+// POST /api/workorders/:id/workshop-start-fabrication
+const workshopStartFabrication = async (req, res) => {
+  try {
+    const { note } = req.body;
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    if (wo.status !== 'materials_verified') return res.status(400).json({ success: false, message: 'Materials not yet verified' });
+
+    wo.status = 'fabrication';
+    wo.stageHistory.push({ stage: 'Gate 6B', action: 'Fabrication started', performedBy: req.user._id, note });
+    await wo.save();
+
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GATE 7: Workshop marks complete
+// POST /api/workorders/:id/workshop-complete
+const workshopComplete = async (req, res) => {
+  try {
+    const { note } = req.body;
+    const wo = await WorkOrder.findById(req.params.id);
+    if (!wo) return res.status(404).json({ success: false, message: 'Work order not found' });
+    if (wo.status !== 'fabrication') return res.status(400).json({ success: false, message: 'WO not in fabrication state' });
+
+    wo.status = 'completed';
+    wo.stageHistory.push({ stage: 'Gate 7', action: 'Work completed', performedBy: req.user._id, note });
+    await wo.save();
+
+    await notify({ title: 'Work Order Completed! 🎉', message: `${wo.refCode} for ${wo.clientName} has been completed.`, type: 'success', targetRoles: ['admin', 'sales', 'accounts', 'projectmanager'], relatedId: wo._id, createdBy: req.user._id });
+
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Add attachments to WO
+// PATCH /api/workorders/:id/attachments
+const addAttachments = async (req, res) => {
+  try {
+    const { attachments } = req.body;
+    const wo = await WorkOrder.findByIdAndUpdate(
+      req.params.id,
+      { $push: { attachments: { $each: attachments } } },
+      { new: true }
+    );
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Log a note on WO
+// POST /api/workorders/:id/log-note
+const logNote = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const wo = await WorkOrder.findByIdAndUpdate(
+      req.params.id,
+      { $push: { logNotes: { text, addedBy: req.user._id } } },
+      { new: true }
+    );
+    return res.status(200).json({ success: true, data: wo });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 module.exports = {
-  getWorkOrders,
-  getWorkOrderById,
-  createWorkOrder,
-  updateWorkOrder,
-  deleteWorkOrder,
-  getWorkOrderStats
+  getWorkOrders, getWorkOrderById, createWorkOrder, updateWorkOrder, deleteWorkOrder, getWorkOrderStats,
+  issueFromSales, accountsApprove, designSubmit, pmReview, purchaseOrdered,
+  workshopVerifyMaterials, workshopStartFabrication, workshopComplete,
+  addAttachments, logNote
 };
