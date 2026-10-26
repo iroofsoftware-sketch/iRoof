@@ -51,7 +51,7 @@ export const shareQuotationViaWhatsApp = ({
     ``,
     `Please contact us for site layout and technical verification.`,
     `----------------------------------------`,
-    `*I Roofing Enterprises* · Powered by Auxzon (auxzons.com)`
+    `*I Roofing Enterprises* · Architectural Roofing Systems`
   ]
     .filter(Boolean)
     .join('\n');
@@ -81,7 +81,7 @@ export const shareInvoiceViaWhatsApp = ({
     ``,
     `Thank you for your business!`,
     `----------------------------------------`,
-    `*I Roofing Enterprises* · Powered by Auxzon (auxzons.com)`
+    `*I Roofing Enterprises* · Architectural Roofing Systems`
   ]
     .filter(Boolean)
     .join('\n');

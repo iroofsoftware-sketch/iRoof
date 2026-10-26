@@ -175,7 +175,7 @@ class _AdminHomeState extends State<AdminHome> {
             const SizedBox(height: 36),
             const Center(
               child: Text(
-                'I Roofing Enterprises · Powered by Auxzon (auxzons.com)',
+                'I Roofing Enterprises · Architectural Roofing Systems',
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
             ),

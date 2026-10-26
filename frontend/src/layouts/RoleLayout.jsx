@@ -513,19 +513,8 @@ const RoleLayout = () => {
               gap: 4
             }}
           >
-            <span>Powered by</span>
-            <a
-              href="https://auxzons.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: '#c9940a',
-                fontWeight: 600,
-                textDecoration: 'none'
-              }}
-            >
-              Auxzon
-            </a>
+            <span>I Roofing Enterprises</span>
+            <span style={{ color: '#c9940a', fontWeight: 600 }}>v2.0</span>
           </div>
         )}
       </div>
@@ -722,19 +711,7 @@ const RoleLayout = () => {
             borderTop: '1px solid #edf2f7'
           }}
         >
-          <span>I Roofing Enterprises · </span>
-          <a
-            href="https://auxzons.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: '#0b2e59',
-              fontWeight: 600,
-              textDecoration: 'none'
-            }}
-          >
-            by Auxzon
-          </a>
+          <span>I Roofing Enterprises · Architectural Roofing Systems © 2026</span>
         </Footer>
       </Layout>
 

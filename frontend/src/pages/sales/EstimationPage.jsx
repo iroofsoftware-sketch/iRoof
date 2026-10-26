@@ -1274,7 +1274,7 @@ const EstimationPage = () => {
           <div style={{ marginTop: 40, borderTop: '1px solid #e2e8f0', paddingTop: 16, fontSize: 11, color: '#64748b' }}>
             <p>1. Estimate valid for 15 days from date of issuance.</p>
             <p>2. Subject to site verification and final structural approval.</p>
-            <p>Prepared by I Roofing Enterprises (Auxzon Solutions System)</p>
+            <p>Prepared by I Roofing Enterprises</p>
           </div>
         </div>
       </div>

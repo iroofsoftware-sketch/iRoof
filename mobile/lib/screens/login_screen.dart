@@ -334,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 28),
 
-                // ── BRAND FOOTER (AUXZON) ──
+                // ── BRAND FOOTER ──
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: const [
@@ -347,7 +347,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: Colors.white30, fontSize: 12),
                     ),
                     Text(
-                      'Powered by Auxzon',
+                      'v2.0 Enterprise',
                       style: TextStyle(
                         color: AppColors.accentGold,
                         fontSize: 12,
@@ -358,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'auxzons.com',
+                  'Architectural Roofing Systems',
                   style: TextStyle(color: Colors.white38, fontSize: 11),
                 ),
               ],

@@ -191,18 +191,7 @@ const LoginPage = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>I Roofing Enterprises</span>
             <span style={{ opacity: 0.4 }}>·</span>
-            <a
-              href="https://auxzons.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: '#c9940a',
-                textDecoration: 'none',
-                fontWeight: 600
-              }}
-            >
-              by Auxzon
-            </a>
+            <span style={{ color: '#c9940a', fontWeight: 600 }}>Enterprise Suite</span>
           </div>
           <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255, 255, 255, 0.6)' }}>
             v2.0 PRO
@@ -360,19 +349,7 @@ const LoginPage = () => {
 
         {/* Minimal Footer */}
         <div style={{ marginTop: 24, fontSize: 11.5, color: '#94a3b8', textAlign: 'center' }}>
-          <span>Protected Enterprise System · iRoofing © 2026 · </span>
-          <a
-            href="https://auxzons.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: '#0b2e59',
-              fontWeight: 600,
-              textDecoration: 'none'
-            }}
-          >
-            by Auxzon
-          </a>
+          <span>Protected Enterprise System · iRoofing Enterprises © 2026</span>
         </div>
       </div>
 

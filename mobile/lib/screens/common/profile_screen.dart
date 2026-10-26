@@ -550,7 +550,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
           const Center(
             child: Text(
-              'I Roofing Enterprises Mobile v1.0.0 · Powered by Auxzon',
+              'I Roofing Enterprises Mobile v1.0.0',
               style: TextStyle(fontSize: 11, color: Colors.grey),
             ),
           ),

@@ -242,7 +242,7 @@ class _SiteVisitorHomeState extends State<SiteVisitorHome> {
               // Brand Sign-off
               const Center(
                 child: Text(
-                  'I Roofing Enterprises · Powered by Auxzon (auxzons.com)',
+                  'I Roofing Enterprises · Architectural Roofing Systems',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
               ),
