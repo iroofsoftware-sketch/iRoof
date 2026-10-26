@@ -39,6 +39,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text = 'pm@iroofing.com';
         _passwordController.text = 'Pm@123';
         _activeRoleLabel = 'Project Manager';
+      } else if (role == 'sales') {
+        _emailController.text = 'sales@iroofing.com';
+        _passwordController.text = 'Sales@123';
+        _activeRoleLabel = 'Sales';
       } else {
         _emailController.text = 'sitevisitor@iroofing.com';
         _passwordController.text = 'Site@123';
@@ -78,10 +82,10 @@ class _LoginScreenState extends State<LoginScreen> {
     Widget destination;
     switch (user.role.toLowerCase()) {
       case 'admin':
+      case 'sales':
         destination = AdminTabScaffold(user: user);
         break;
       case 'projectmanager':
-      case 'sales':
       case 'accounts':
       case 'purchase':
       case 'workshop':
@@ -309,6 +313,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                               child: const Text('PM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => _quickFillRole('sales'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                side: BorderSide(
+                                  color: _activeRoleLabel == 'Sales' ? AppColors.accentGold : AppColors.border,
+                                  width: _activeRoleLabel == 'Sales' ? 1.8 : 1.0,
+                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const Text('Sales', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
                             ),
                           ),
                           const SizedBox(width: 6),

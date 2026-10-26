@@ -6,6 +6,7 @@ import '../common/server_config_dialog.dart';
 import '../common/work_order_detail_screen.dart';
 import '../common/profile_screen.dart';
 import '../notifications_sheet.dart';
+import '../site_visitor/quick_estimator_screen.dart';
 
 class PmTabScaffold extends StatefulWidget {
   final UserModel user;
@@ -78,6 +79,14 @@ class _PmTabScaffoldState extends State<PmTabScaffold> {
         backgroundColor: AppColors.primaryNavy,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calculate_outlined),
+            tooltip: 'Roof Estimator',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const QuickEstimatorScreen()),
+            ),
+          ),
           Stack(
             children: [
               IconButton(
