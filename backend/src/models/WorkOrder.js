@@ -34,75 +34,108 @@ const workOrderSchema = new mongoose.Schema(
     span: { type: Number },
     length: { type: Number },
     height: { type: Number },
-    grandTotal: { type: Number },
-
-    // Stage-gate status
+    grandTotal: { type: Number }, // from estimate.results.costs.grandTotal
     status: {
       type: String,
       enum: [
         'draft',
-        'pending_accounts',    // Gate 1: Sales issued WO
-        'accounts_approved',   // Gate 2: Accounts approved
-        'design_submitted',    // Gate 3: Design submitted drawings
-        'pm_review',           // Gate 4: PM reviewing design
-        'purchase_ordered',    // Gate 5: Purchase ordered materials
-        'materials_verified',  // Gate 6A: Workshop verified materials (GRN)
-        'fabrication',         // Gate 6B: Workshop in fabrication
-        'completed',           // Gate 7: Work complete
+        'pending_accounts_approval', // 1. Issued by Sales, awaiting Accounts commercial approval
+        'pending_design',            // 2. Approved by Accounts, handed to Design for drawings
+        'pending_pm_review',         // 3. Drawings submitted by Design, PM preparing Material List
+        'drawing_revision',          // 3b. PM requested drawing revision from Design
+        'pending_purchase',          // 4. PM approved & released Material List to Purchase & Accounts
+        'pending_delivery',          // 5. Purchase Order issued to Suppliers, awaiting material delivery
+        'materials_received',        // 6a. Physical materials delivered & verified by Workshop against Material List
+        'in_fabrication',            // 6b. Fabrication / Sheet production in progress
+        'completed',                 // 7. Handover / Work completed
+        'active',                    // Legacy general active
         'on_hold',
         'cancelled'
       ],
-      default: 'draft'
+      default: 'pending_accounts_approval'
     },
     priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
     targetDate: { type: Date },
     notes: { type: String },
 
-    // Stage history audit trail
-    stageHistory: [stageHistorySchema],
+    // Stage Gate Flow Data
+    stageHistory: [
+      {
+        stage: { type: String, required: true },
+        actionBy: { type: ObjectId, ref: 'User' },
+        actionRole: { type: String },
+        timestamp: { type: Date, default: Date.now },
+        notes: { type: String }
+      }
+    ],
 
-    // BOM / Material list (set by Design at Gate 3)
-    materialList: [bomItemSchema],
+    // Design Drawings uploaded by Design engineer
+    drawingFiles: [
+      {
+        name: String,
+        url: String,
+        fileType: String,
+        size: Number,
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
 
-    // Drawing files (set by Design at Gate 3)
-    drawingFiles: [{ url: String, name: String, uploadedAt: { type: Date, default: Date.now } }],
+    // Material List / BOM verified and released by Project Manager
+    materialList: [
+      {
+        name: { type: String, required: true },
+        quantity: { type: Number, required: true },
+        unit: { type: String, default: 'kg' },
+        specification: String,
+        estimatedCost: Number,
+        notes: String
+      }
+    ],
 
-    // Attachments (general)
-    attachments: [{ url: String, name: String, type: String, uploadedAt: { type: Date, default: Date.now } }],
-
-    // Revision notes (PM → Design feedback)
+    // Drawing Revision feedback if PM rejects/requests change
     revisionNotes: { type: String },
 
-    // Accounts approval details
+    // Accounts Commercial Approval
     accountsApproval: {
-      approvedBy: { type: ObjectId, ref: 'User' },
+      approved: { type: Boolean, default: false },
       approvedAt: Date,
-      note: String,
+      approvedBy: { type: ObjectId, ref: 'User' },
+      paymentTerms: String,
+      advanceReceived: Number,
+      notes: String
     },
 
-    // Materials verified by Workshop
+    // Workshop Goods Receipt Verification (GRN vs Material List)
     materialsVerified: {
-      verifiedBy: { type: ObjectId, ref: 'User' },
+      verified: { type: Boolean, default: false },
       verifiedAt: Date,
-      note: String,
+      verifiedBy: { type: ObjectId, ref: 'User' },
+      notes: String
     },
 
-    // Notes log
-    logNotes: [noteSchema],
-
+    attachments: [
+      {
+        name: String,
+        url: String,
+        fileType: String,
+        size: Number,
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
     createdBy: { type: ObjectId, ref: 'User', required: true },
     assignedPM: { type: ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );
 
-workOrderSchema.pre('save', async function (next) {
+// Auto-generate refCode before save:
+// WO-YYYY-NNNN format, padded 4 digits, year from current year
+workOrderSchema.pre('save', async function () {
   if (this.isNew && !this.refCode) {
     const year = new Date().getFullYear();
     const count = await this.constructor.countDocuments();
     this.refCode = `WO-${year}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('WorkOrder', workOrderSchema);

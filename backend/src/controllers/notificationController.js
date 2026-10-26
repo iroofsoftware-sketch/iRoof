@@ -1,50 +1,149 @@
 const Notification = require('../models/Notification');
 
-// GET /api/notifications - get notifications for current user's role
+// Internal helper to create a notification from any controller
+const createNotification = async ({
+  recipientRole = 'all',
+  recipientUser = null,
+  title,
+  message,
+  type = 'info',
+  link = '',
+  refCode = '',
+  createdBy = null
+}) => {
+  try {
+    const notification = await Notification.create({
+      recipientRole,
+      recipientUser,
+      title,
+      message,
+      type,
+      link,
+      refCode,
+      createdBy
+    });
+    return notification;
+  } catch (error) {
+    console.error('Failed to create notification helper:', error);
+    return null;
+  }
+};
+
+// @desc    Get user notifications
+// @route   GET /api/notifications
+// @access  Private (all logged in users)
 const getNotifications = async (req, res) => {
   try {
-    const { limit = 20, unreadOnly } = req.query;
-    const filter = {
-      $or: [
-        { targetRoles: req.user.role },
-        { targetUser: req.user._id }
-      ]
-    };
-    if (unreadOnly === 'true') filter.isRead = false;
+    const userRole = req.user.role;
+    const userId = req.user._id;
 
-    const notifications = await Notification.find(filter)
+    // Admins see all notifications; other roles see their role or notifications specifically for them or 'all'
+    let query = {};
+    if (userRole !== 'admin') {
+      query = {
+        $or: [
+          { recipientRole: userRole },
+          { recipientRole: 'all' },
+          { recipientUser: userId }
+        ]
+      };
+    }
+
+    const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
-      .limit(Number(limit));
+      .limit(30)
+      .lean();
 
-    const unreadCount = await Notification.countDocuments({ ...filter, isRead: false });
+    const formatted = notifications.map((n) => {
+      const isRead = Array.isArray(n.readBy) && n.readBy.some((r) => r.user?.toString() === userId.toString());
+      return {
+        ...n,
+        isRead
+      };
+    });
 
-    return res.status(200).json({ success: true, data: notifications, unreadCount });
+    const unreadCount = formatted.filter((n) => !n.isRead).length;
+
+    return res.status(200).json({
+      success: true,
+      unreadCount,
+      data: formatted
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    console.error('Error fetching notifications:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve notifications',
+      error: error.message
+    });
   }
 };
 
-// PATCH /api/notifications/:id/read
-const markAsRead = async (req, res) => {
+// @desc    Mark single notification as read
+// @route   PATCH /api/notifications/:id/read
+// @access  Private
+const markNotificationRead = async (req, res) => {
   try {
-    const n = await Notification.findByIdAndUpdate(req.params.id, { isRead: true, readAt: new Date() }, { new: true });
-    return res.status(200).json({ success: true, data: n });
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const notification = await Notification.findById(id);
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+
+    const alreadyRead = notification.readBy.some((r) => r.user?.toString() === userId.toString());
+    if (!alreadyRead) {
+      notification.readBy.push({ user: userId, readAt: new Date() });
+      await notification.save();
+    }
+
+    return res.status(200).json({ success: true, message: 'Notification marked as read' });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    console.error('Error marking notification read:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to mark notification read',
+      error: error.message
+    });
   }
 };
 
-// PATCH /api/notifications/mark-all-read
+// @desc    Mark all user's notifications as read
+// @route   POST /api/notifications/mark-all-read
+// @access  Private
 const markAllRead = async (req, res) => {
   try {
-    await Notification.updateMany(
-      { $or: [{ targetRoles: req.user.role }, { targetUser: req.user._id }], isRead: false },
-      { isRead: true, readAt: new Date() }
-    );
+    const userId = req.user._id;
+    const userRole = req.user.role;
+
+    let query = { 'readBy.user': { $ne: userId } };
+    if (userRole !== 'admin') {
+      query.$or = [
+        { recipientRole: userRole },
+        { recipientRole: 'all' },
+        { recipientUser: userId }
+      ];
+    }
+
+    await Notification.updateMany(query, {
+      $push: { readBy: { user: userId, readAt: new Date() } }
+    });
+
     return res.status(200).json({ success: true, message: 'All notifications marked as read' });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    console.error('Error marking all notifications read:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to mark all notifications read',
+      error: error.message
+    });
   }
 };
 
-module.exports = { getNotifications, markAsRead, markAllRead };
+module.exports = {
+  createNotification,
+  getNotifications,
+  markNotificationRead,
+  markAllRead
+};

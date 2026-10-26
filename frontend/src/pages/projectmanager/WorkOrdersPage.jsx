@@ -26,7 +26,8 @@ import {
   CloseCircleOutlined,
   AppstoreOutlined,
   EditOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -44,10 +45,18 @@ const PRIORITY_TAGS = {
 };
 
 const STATUS_CONFIG = {
-  draft: { color: '#6b7280', label: 'Draft' },
+  pending_accounts_approval: { color: '#d97706', label: '1. Accounts Approval' },
+  pending_design: { color: '#2563eb', label: '2. In Design' },
+  pending_pm_review: { color: '#7c3aed', label: '3. PM Review' },
+  drawing_revision: { color: '#dc2626', label: '3b. Drawing Revision' },
+  pending_purchase: { color: '#0891b2', label: '4. Procurement' },
+  pending_delivery: { color: '#4f46e5', label: '5. Awaiting Delivery' },
+  materials_received: { color: '#059669', label: '6a. GRN Verified' },
+  in_fabrication: { color: '#0b2e59', label: '6b. In Fabrication' },
+  completed: { color: '#15803d', label: '7. Completed' },
   active: { color: '#3b82f6', label: 'Active' },
+  draft: { color: '#6b7280', label: 'Draft' },
   on_hold: { color: '#f59e0b', label: 'On Hold' },
-  completed: { color: '#10b981', label: 'Completed' },
   cancelled: { color: '#ef4444', label: 'Cancelled' }
 };
 
@@ -239,19 +248,8 @@ const WorkOrdersPage = () => {
       title: 'REF CODE',
       dataIndex: 'refCode',
       key: 'refCode',
-      width: 130,
-      render: (val) => (
-        <span
-          style={{
-            fontFamily: 'monospace',
-            fontWeight: 600,
-            color: '#0b315d',
-            fontSize: 12
-          }}
-        >
-          {val || '—'}
-        </span>
-      )
+      width: 140,
+      render: (val) => <span className="ref-badge">{val || '—'}</span>
     },
     {
       title: 'CLIENT',
@@ -259,9 +257,9 @@ const WorkOrdersPage = () => {
       key: 'clientName',
       render: (val, r) => (
         <div>
-          <span style={{ fontWeight: 500, color: '#111827' }}>{val}</span>
+          <span style={{ fontWeight: 600, color: '#0f172a' }}>{val}</span>
           {r.siteAddress && (
-            <div style={{ fontSize: 11, color: '#6b7280' }}>{r.siteAddress}</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>{r.siteAddress}</div>
           )}
         </div>
       )
@@ -270,12 +268,13 @@ const WorkOrdersPage = () => {
       title: 'ROOF MODEL',
       dataIndex: 'roofModel',
       key: 'roofModel',
-      render: (val) => <span style={{ fontSize: 12, color: '#6b7280' }}>{val || '—'}</span>
+      render: (val) => <span style={{ fontSize: 12, color: '#475569', fontWeight: 500 }}>{val || '—'}</span>
     },
     {
       title: 'PRIORITY',
       dataIndex: 'priority',
       key: 'priority',
+      width: 110,
       render: (val) => {
         const cfg = PRIORITY_TAGS[val] || PRIORITY_TAGS.medium;
         return (
@@ -284,7 +283,7 @@ const WorkOrdersPage = () => {
             style={{
               backgroundColor: cfg.bg,
               color: cfg.color,
-              fontWeight: 500,
+              fontWeight: 600,
               fontSize: 11,
               borderRadius: 4
             }}
@@ -298,27 +297,12 @@ const WorkOrdersPage = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (status) => {
         const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
         return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 12,
-              fontWeight: 500
-            }}
-          >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                backgroundColor: cfg.color
-              }}
-            />
-            <span style={{ color: cfg.color }}>{cfg.label}</span>
+          <span className={`status-dot status-${status}`}>
+            <span style={{ textTransform: 'capitalize' }}>{cfg.label}</span>
           </span>
         );
       }
@@ -327,8 +311,9 @@ const WorkOrdersPage = () => {
       title: 'GRAND TOTAL',
       dataIndex: 'grandTotal',
       key: 'grandTotal',
+      align: 'right',
       render: (val) => (
-        <span style={{ fontWeight: 500, color: '#111827', fontSize: 13 }}>
+        <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }} className="tabular-nums">
           ₹ {Number(val || 0).toLocaleString('en-IN')}
         </span>
       )
@@ -337,8 +322,9 @@ const WorkOrdersPage = () => {
       title: 'TARGET DATE',
       dataIndex: 'targetDate',
       key: 'targetDate',
+      width: 130,
       render: (val) => (
-        <span style={{ fontSize: 12, color: '#6b7280' }}>
+        <span style={{ fontSize: 12.5, color: '#64748b' }} className="tabular-nums">
           {val ? dayjs(val).format('DD MMM YYYY') : '—'}
         </span>
       )
@@ -351,10 +337,10 @@ const WorkOrdersPage = () => {
         const initial = name.charAt(0).toUpperCase();
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Avatar size={24} style={{ backgroundColor: '#0b315d', fontSize: 11 }}>
+            <Avatar size={24} style={{ backgroundColor: '#0b2e59', fontSize: 11, fontWeight: 600 }}>
               {initial}
             </Avatar>
-            <span style={{ fontSize: 12, color: '#374151' }}>{name}</span>
+            <span style={{ fontSize: 12.5, color: '#334155', fontWeight: 500 }}>{name}</span>
           </div>
         );
       }
@@ -364,17 +350,33 @@ const WorkOrdersPage = () => {
       key: 'actions',
       align: 'right',
       render: (_, r) => (
-        <Button
-          type="text"
-          size="small"
-          icon={<EyeOutlined style={{ color: '#0b315d' }} />}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenDrawer(r);
-          }}
-        >
-          View
-        </Button>
+        <Space size={4}>
+          {r.status === 'completed' && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<FileTextOutlined />}
+              style={{ background: '#15803d', borderColor: '#15803d', fontSize: 12 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/accounts/invoices?workOrderId=${r._id}`);
+              }}
+            >
+              Invoice
+            </Button>
+          )}
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined style={{ color: '#0b315d' }} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDrawer(r);
+            }}
+          >
+            View
+          </Button>
+        </Space>
       )
     }
   ];
@@ -446,19 +448,7 @@ const WorkOrdersPage = () => {
       </div>
 
       {/* ── FILTER BAR ── */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #dde3ea',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}
-      >
+      <div className="filter-bar">
         <Input
           prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
           placeholder="Search by client or ref..."

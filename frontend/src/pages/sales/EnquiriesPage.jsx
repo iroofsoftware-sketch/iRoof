@@ -13,7 +13,13 @@ import {
   message,
   Dropdown,
   Row,
-  Col
+  Col,
+  Segmented,
+  Tag,
+  Typography,
+  Card,
+  Badge,
+  Tooltip
 } from 'antd';
 import {
   PlusOutlined,
@@ -21,24 +27,34 @@ import {
   EyeOutlined,
   CalculatorOutlined,
   EditOutlined,
-  CloseOutlined,
+  AppstoreOutlined,
+  BarsOutlined,
+  PhoneOutlined,
+  EnvironmentOutlined,
+  CalendarOutlined,
+  RightCircleOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  PaperClipOutlined,
   DownOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import AttachmentManager from '../../components/common/AttachmentManager';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 const { TextArea } = Input;
+const { Text } = Typography;
 
 const STATUSES = [
-  { key: 'new', label: 'New' },
-  { key: 'visited', label: 'Visited' },
-  { key: 'estimated', label: 'Estimated' },
-  { key: 'approved', label: 'Approved' },
-  { key: 'rejected', label: 'Rejected' },
-  { key: 'completed', label: 'Completed' }
+  { key: 'new', label: 'New Lead', color: '#0b2e59' },
+  { key: 'visited', label: 'Site Survey', color: '#1d4ed8' },
+  { key: 'estimated', label: 'Estimated', color: '#0284c7' },
+  { key: 'approved', label: 'Negotiation / Approved', color: '#c9940a' },
+  { key: 'completed', label: 'Project Won', color: '#15803d' },
+  { key: 'rejected', label: 'Closed / Lost', color: '#94a3b8' }
 ];
 
 const ROOF_TYPES = [
@@ -53,10 +69,14 @@ const ROOF_TYPES = [
 const EnquiriesPage = () => {
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'table'
+
+  // Modals & Drawers
   const [modalVisible, setModalVisible] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [editingEnquiry, setEditingEnquiry] = useState(null);
+  const [attachments, setAttachments] = useState([]);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,6 +107,7 @@ const EnquiriesPage = () => {
 
   const handleOpenCreateModal = () => {
     setEditingEnquiry(null);
+    setAttachments([]);
     form.resetFields();
     form.setFieldsValue({
       roofType: 'Normal Cantilever',
@@ -98,6 +119,7 @@ const EnquiriesPage = () => {
 
   const handleOpenEditModal = (record) => {
     setEditingEnquiry(record);
+    setAttachments(record.attachments || []);
     form.resetFields();
     form.setFieldsValue({
       clientName: record.clientName,
@@ -114,6 +136,7 @@ const EnquiriesPage = () => {
 
   const handleOpenDrawer = (record) => {
     setSelectedEnquiry(record);
+    setAttachments(record.attachments || []);
     setDrawerVisible(true);
   };
 
@@ -127,7 +150,8 @@ const EnquiriesPage = () => {
         roofType: values.roofType,
         status: values.status,
         enquiryDate: values.enquiryDate ? values.enquiryDate.toISOString() : new Date().toISOString(),
-        notes: values.notes
+        notes: values.notes,
+        attachments: attachments || []
       };
 
       if (editingEnquiry) {
@@ -148,8 +172,8 @@ const EnquiriesPage = () => {
 
   const handleStatusChange = async (enquiryId, newStatus) => {
     try {
-      await api.patch(`/enquiries/${enquiryId}/status`, { status: newStatus });
-      message.success(`Status updated to ${newStatus}`);
+      await api.put(`/enquiries/${enquiryId}`, { status: newStatus });
+      message.success(`Lead moved to ${newStatus}`);
       setEnquiries((prev) =>
         prev.map((e) => (e._id === enquiryId ? { ...e, status: newStatus } : e))
       );
@@ -162,12 +186,20 @@ const EnquiriesPage = () => {
     }
   };
 
-  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || dateRange !== null;
-
-  const clearFilters = () => {
-    setSearchQuery('');
-    setStatusFilter('all');
-    setDateRange(null);
+  const handleDrawerAttachmentsChange = async (newAttachments) => {
+    setAttachments(newAttachments);
+    if (selectedEnquiry) {
+      try {
+        await api.put(`/enquiries/${selectedEnquiry._id}`, { attachments: newAttachments });
+        setSelectedEnquiry((prev) => ({ ...prev, attachments: newAttachments }));
+        setEnquiries((prev) =>
+          prev.map((e) => (e._id === selectedEnquiry._id ? { ...e, attachments: newAttachments } : e))
+        );
+      } catch (err) {
+        console.error('Error saving attachments:', err);
+        message.error('Failed to update attachments');
+      }
+    }
   };
 
   const filteredEnquiries = enquiries.filter((e) => {
@@ -197,29 +229,32 @@ const EnquiriesPage = () => {
       title: 'REF #',
       dataIndex: '_id',
       key: 'ref',
-      width: 100,
-      render: (id) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 500, color: '#0b315d', fontSize: 12 }}>
-          #{id.slice(-6).toUpperCase()}
-        </span>
-      )
+      width: 120,
+      render: (id) => <span className="ref-badge">ENQ-{id.slice(-6).toUpperCase()}</span>
     },
     {
       title: 'CUSTOMER',
       dataIndex: 'clientName',
       key: 'customer',
-      render: (name) => <span style={{ fontWeight: 500, color: '#111827' }}>{name}</span>
+      render: (name) => <span style={{ fontWeight: 600, color: '#0f172a' }}>{name}</span>
     },
     {
       title: 'LOCATION',
       dataIndex: 'address',
       key: 'location',
-      render: (loc) => <span style={{ color: '#6b7280' }}>{loc || '—'}</span>
+      render: (loc) => <span style={{ color: '#64748b' }}>{loc || '—'}</span>
+    },
+    {
+      title: 'ROOF MODEL',
+      dataIndex: 'roofType',
+      key: 'roofType',
+      render: (rt) => <Tag color="blue">{rt || 'Cantilever'}</Tag>
     },
     {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (st) => (
         <span className={`status-dot status-${st || 'new'}`}>
           <span style={{ textTransform: 'capitalize' }}>{st || 'new'}</span>
@@ -227,141 +262,368 @@ const EnquiriesPage = () => {
       )
     },
     {
+      title: 'DOCUMENTS',
+      key: 'attachments',
+      render: (_, r) =>
+        r.attachments && r.attachments.length > 0 ? (
+          <Tag icon={<PaperClipOutlined />} color="default">
+            {r.attachments.length} files
+          </Tag>
+        ) : (
+          <span style={{ color: '#cbd5e1' }}>—</span>
+        )
+    },
+    {
       title: 'DATE',
       dataIndex: 'enquiryDate',
       key: 'date',
+      width: 110,
       render: (d) => (
-        <span style={{ color: '#6b7280', fontSize: 12 }}>
+        <span style={{ color: '#64748b', fontSize: 12 }} className="tabular-nums">
           {d ? new Date(d).toLocaleDateString('en-IN') : '—'}
         </span>
       )
-    },
-    {
-      title: 'ASSIGNED TO',
-      key: 'assigned',
-      render: (_, r) => {
-        const staffName = r.assignedTo?.name || r.createdBy?.name || 'Sales Staff';
-        const initial = staffName.charAt(0).toUpperCase();
-        return (
-          <Space size={6}>
-            <Avatar size={22} style={{ background: '#dde3ea', color: '#374151', fontSize: 11 }}>
-              {initial}
-            </Avatar>
-            <span style={{ fontSize: 12, color: '#374151' }}>{staffName}</span>
-          </Space>
-        );
-      }
     },
     {
       title: 'ACTIONS',
       key: 'actions',
       align: 'right',
       render: (_, record) => (
-        <Button
-          type="text"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenDrawer(record);
-          }}
-          style={{ color: '#0b315d', fontWeight: 500 }}
-        >
-          View
-        </Button>
+        <Space size={4}>
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDrawer(record);
+            }}
+            style={{ color: '#0b2e59', fontWeight: 600 }}
+          >
+            View
+          </Button>
+          <Button
+            type="text"
+            size="small"
+            icon={<CalculatorOutlined />}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/sales/estimates/new?enquiryId=${record._id}`);
+            }}
+            style={{ color: '#c9940a', fontWeight: 600 }}
+            title="Create Estimate"
+          />
+        </Space>
       )
     }
   ];
 
   return (
-    <div>
-      {/* HEADER ROW */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* ── HEADER ROW ── */}
       <div className="page-header">
-        <div>
-          <div className="page-title">Enquiries</div>
-          <div className="page-subtitle">Manage client leads and site visits</div>
+        <div className="page-header__left">
+          <h1 className="page-title">Sales Pipeline & Leads</h1>
+          <p className="page-subtitle">
+            Manage commercial roofing leads, architectural inquiries, site measurements, and proposal progress
+          </p>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleOpenCreateModal}
-          style={{ background: '#0b315d', borderColor: '#0b315d' }}
-        >
-          New Enquiry
-        </Button>
+
+        <div className="page-header__actions">
+          {/* View Switcher */}
+          <Segmented
+            value={viewMode}
+            onChange={setViewMode}
+            options={[
+              { label: 'Kanban Board', value: 'kanban', icon: <AppstoreOutlined /> },
+              { label: 'Table List', value: 'table', icon: <BarsOutlined /> }
+            ]}
+          />
+
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleOpenCreateModal}
+            style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
+          >
+            New Lead
+          </Button>
+        </div>
       </div>
 
-      {/* FILTER BAR */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #dde3ea',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}
-      >
+      {/* ── FILTER BAR ── */}
+      <div className="filter-bar">
         <Input
-          prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
-          placeholder="Search by name, ref, location..."
+          prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+          placeholder="Search leads by client name, ref, phone, location..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ width: 260, height: 36, borderRadius: 8 }}
+          style={{ width: 320, flex: '1 1 260px' }}
           allowClear
         />
 
-        <Select
-          value={statusFilter}
-          onChange={(val) => setStatusFilter(val)}
-          style={{ width: 150, height: 36 }}
-          placeholder="All statuses"
-        >
-          <Option value="all">All statuses</Option>
-          {STATUSES.map((s) => (
-            <Option key={s.key} value={s.key}>
-              {s.label}
-            </Option>
-          ))}
-        </Select>
+        {viewMode === 'table' && (
+          <Select
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ width: 180 }}
+            placeholder="All Stages"
+          >
+            <Option value="all">All Stages</Option>
+            {STATUSES.map((s) => (
+              <Option key={s.key} value={s.key}>
+                {s.label}
+              </Option>
+            ))}
+          </Select>
+        )}
 
         <RangePicker
           value={dateRange}
-          onChange={(dates) => setDateRange(dates)}
+          onChange={setDateRange}
           format="DD/MM/YYYY"
-          style={{ height: 36, borderRadius: 8 }}
+          style={{ width: 240 }}
         />
 
-        {hasActiveFilters && (
-          <Button type="link" onClick={clearFilters} style={{ color: '#6b7280', fontSize: 13, padding: 0 }}>
+        {(searchQuery || statusFilter !== 'all' || dateRange) && (
+          <Button
+            type="link"
+            onClick={() => {
+              setSearchQuery('');
+              setStatusFilter('all');
+              setDateRange(null);
+            }}
+            style={{ color: '#64748b', padding: 0 }}
+          >
             Clear filters
           </Button>
         )}
       </div>
 
-      {/* TABLE */}
-      <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <Table
-          columns={columns}
-          dataSource={filteredEnquiries}
-          rowKey="_id"
-          loading={loading}
-          pagination={{ pageSize: 10, showSizeChanger: true }}
-          onRow={(record) => ({
-            onClick: () => handleOpenDrawer(record),
-            style: { cursor: 'pointer' }
+      {/* VIEW: KANBAN BOARD */}
+      {viewMode === 'kanban' ? (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 14,
+            alignItems: 'flex-start',
+            overflowX: 'auto',
+            paddingBottom: 16
+          }}
+        >
+          {STATUSES.map((col) => {
+            const colLeads = filteredEnquiries.filter((e) => (e.status || 'new') === col.key);
+
+            return (
+              <div
+                key={col.key}
+                style={{
+                  background: '#f8fafc',
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  maxHeight: 'calc(100vh - 230px)'
+                }}
+              >
+                {/* Column Header */}
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: '#ffffff',
+                    borderTopLeftRadius: 8,
+                    borderTopRightRadius: 8
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      style={{
+                        width: 9,
+                        height: 9,
+                        borderRadius: '50%',
+                        background: col.color
+                      }}
+                    />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                      {col.label}
+                    </span>
+                  </div>
+                  <Tag
+                    style={{
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      fontSize: 11,
+                      margin: 0,
+                      background: '#f1f5f9',
+                      border: '1px solid #e2e8f0'
+                    }}
+                  >
+                    {colLeads.length}
+                  </Tag>
+                </div>
+
+                {/* Column Cards Container */}
+                <div
+                  style={{
+                    padding: 10,
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                    minHeight: 120
+                  }}
+                >
+                  {colLeads.length === 0 ? (
+                    <div
+                      style={{
+                        padding: '24px 12px',
+                        textAlign: 'center',
+                        color: '#94a3b8',
+                        fontSize: 12,
+                        border: '1px dashed #e2e8f0',
+                        borderRadius: 6
+                      }}
+                    >
+                      No leads in this stage
+                    </div>
+                  ) : (
+                    colLeads.map((item) => (
+                      <div
+                        key={item._id}
+                        onClick={() => handleOpenDrawer(item)}
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 6,
+                          padding: 12,
+                          boxShadow: '0 1px 3px rgba(15,23,42,0.03)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 8
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#0b2e59';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e2e8f0';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        {/* Top: Ref & Date */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span className="ref-badge" style={{ fontSize: 10.5 }}>
+                            ENQ-{item._id.slice(-6).toUpperCase()}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                            {item.enquiryDate ? dayjs(item.enquiryDate).format('DD MMM') : ''}
+                          </span>
+                        </div>
+
+                        {/* Client Name */}
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.25 }}>
+                          {item.clientName}
+                        </div>
+
+                        {/* Roof Model */}
+                        <div>
+                          <Tag color="blue" style={{ fontSize: 10.5, margin: 0 }}>
+                            {item.roofType || 'Normal Cantilever'}
+                          </Tag>
+                        </div>
+
+                        {/* Location & Attachments */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: '#64748b' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <EnvironmentOutlined style={{ fontSize: 11 }} />
+                            {item.address || 'Location pending'}
+                          </span>
+                          {item.attachments && item.attachments.length > 0 && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 2, color: '#0284c7' }}>
+                              <PaperClipOutlined /> {item.attachments.length}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Bottom Actions */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            borderTop: '1px solid #f1f5f9',
+                            paddingTop: 8,
+                            marginTop: 2
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Dropdown
+                            menu={{
+                              items: STATUSES.map((s) => ({
+                                key: s.key,
+                                label: s.label,
+                                onClick: () => handleStatusChange(item._id, s.key)
+                              }))
+                            }}
+                          >
+                            <Button size="small" type="text" style={{ fontSize: 11, color: '#475569', padding: '0 4px' }}>
+                              Move <DownOutlined style={{ fontSize: 9 }} />
+                            </Button>
+                          </Dropdown>
+
+                          <Button
+                            size="small"
+                            type="primary"
+                            icon={<CalculatorOutlined />}
+                            onClick={() => navigate(`/sales/estimates/new?enquiryId=${item._id}`)}
+                            style={{
+                              background: '#0b2e59',
+                              borderColor: '#0b2e59',
+                              fontSize: 11,
+                              height: 24,
+                              padding: '0 8px'
+                            }}
+                          >
+                            Estimate
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
           })}
-        />
-      </div>
+        </div>
+      ) : (
+        /* VIEW: TABLE */
+        <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <Table
+            columns={columns}
+            dataSource={filteredEnquiries}
+            rowKey="_id"
+            loading={loading}
+            pagination={{ pageSize: 12, showSizeChanger: true }}
+            onRow={(record) => ({
+              onClick: () => handleOpenDrawer(record),
+              style: { cursor: 'pointer' }
+            })}
+          />
+        </div>
+      )}
 
       {/* DETAIL DRAWER */}
       <Drawer
         title={null}
         placement="right"
-        width={520}
+        width={580}
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
         destroyOnClose
@@ -379,7 +641,7 @@ const EnquiriesPage = () => {
                     handleOpenEditModal(selectedEnquiry);
                   }}
                 >
-                  Edit
+                  Edit Details
                 </Button>
                 <Button
                   type="primary"
@@ -388,9 +650,9 @@ const EnquiriesPage = () => {
                     setDrawerVisible(false);
                     navigate(`/sales/estimates/new?enquiryId=${selectedEnquiry._id}`);
                   }}
-                  style={{ background: '#0b315d', borderColor: '#0b315d' }}
+                  style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
                 >
-                  Create Estimate
+                  Create Commercial Estimate
                 </Button>
               </>
             )}
@@ -398,46 +660,39 @@ const EnquiriesPage = () => {
         }
       >
         {selectedEnquiry && (
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Header info */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <span
-                style={{
-                  background: '#0b315d',
-                  color: '#ffffff',
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  fontWeight: 600
-                }}
-              >
-                #{selectedEnquiry._id.slice(-6).toUpperCase()}
-              </span>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>
-                {selectedEnquiry.clientName}
-              </h2>
-            </div>
-
-            {/* Status row */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 0',
-                borderBottom: '1px solid #dde3ea',
-                marginBottom: 20
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <span className="ref-badge" style={{ fontSize: 12 }}>
+                  ENQ-{selectedEnquiry._id.slice(-6).toUpperCase()}
+                </span>
                 <span className={`status-dot status-${selectedEnquiry.status || 'new'}`}>
                   <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
                     {selectedEnquiry.status || 'new'}
                   </span>
                 </span>
               </div>
+              <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                {selectedEnquiry.clientName}
+              </h2>
+            </div>
 
+            {/* Quick Stage advance row */}
+            <div
+              style={{
+                background: '#f8fafc',
+                padding: '10px 14px',
+                borderRadius: 6,
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <span style={{ fontSize: 12, color: '#475569', fontWeight: 500 }}>
+                Pipeline Stage:
+              </span>
               <Dropdown
                 menu={{
                   items: STATUSES.map((s) => ({
@@ -448,103 +703,80 @@ const EnquiriesPage = () => {
                 }}
               >
                 <Button size="small" style={{ fontSize: 12 }}>
-                  Change Status <DownOutlined style={{ fontSize: 10 }} />
+                  Move Stage <DownOutlined style={{ fontSize: 10 }} />
                 </Button>
               </Dropdown>
             </div>
 
-            {/* Section 1: Customer Info */}
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', borderBottom: '1px solid #dde3ea', paddingBottom: 6, marginBottom: 12 }}>
-                Customer Info
+            {/* Customer Details */}
+            <Card styles={{ body: { padding: 14 } }} style={{ borderRadius: 6, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+                Contact & Site Coordinates
               </div>
-              <Row gutter={[12, 10]}>
+              <Row gutter={[12, 10]} style={{ fontSize: 12.5 }}>
                 <Col span={12}>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Contact Name</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEnquiry.clientName}</div>
+                  <div style={{ color: '#64748b' }}>Phone Number</div>
+                  <strong className="tabular-nums" style={{ color: '#0f172a' }}>{selectedEnquiry.phone}</strong>
                 </Col>
                 <Col span={12}>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Phone</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEnquiry.phone}</div>
+                  <div style={{ color: '#64748b' }}>Email</div>
+                  <strong style={{ color: '#0f172a' }}>{selectedEnquiry.email || '—'}</strong>
                 </Col>
-                <Col span={12}>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Email</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEnquiry.email || '—'}</div>
-                </Col>
-                <Col span={12}>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Enquiry Date</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>
-                    {selectedEnquiry.enquiryDate ? new Date(selectedEnquiry.enquiryDate).toLocaleDateString('en-IN') : '—'}
-                  </div>
-                </Col>
-              </Row>
-            </div>
-
-            {/* Section 2: Site Details */}
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', borderBottom: '1px solid #dde3ea', paddingBottom: 6, marginBottom: 12 }}>
-                Site Details
-              </div>
-              <Row gutter={[12, 10]}>
                 <Col span={24}>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Site Address</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEnquiry.address || '—'}</div>
+                  <div style={{ color: '#64748b' }}>Site Address</div>
+                  <div style={{ color: '#0f172a' }}>{selectedEnquiry.address || '—'}</div>
                 </Col>
                 <Col span={12}>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Roof Engineering Model</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#0b315d' }}>{selectedEnquiry.roofType || 'Standard'}</div>
+                  <div style={{ color: '#64748b' }}>Roof Architecture</div>
+                  <Tag color="blue">{selectedEnquiry.roofType || 'Standard Cantilever'}</Tag>
                 </Col>
                 <Col span={12}>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Assigned Representative</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>
-                    {selectedEnquiry.assignedTo?.name || selectedEnquiry.createdBy?.name || 'Sales Staff'}
-                  </div>
+                  <div style={{ color: '#64748b' }}>Date Received</div>
+                  <div>{selectedEnquiry.enquiryDate ? new Date(selectedEnquiry.enquiryDate).toLocaleDateString('en-IN') : '—'}</div>
                 </Col>
               </Row>
-            </div>
+            </Card>
 
-            {/* Section 3: Notes */}
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', borderBottom: '1px solid #dde3ea', paddingBottom: 6, marginBottom: 12 }}>
-                Notes & Field Requirements
+            {/* Notes */}
+            <Card styles={{ body: { padding: 14 } }} style={{ borderRadius: 6, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+                Engineering & Site Notes
               </div>
-              <div
-                style={{
-                  background: '#f8fafc',
-                  border: '1px solid #dde3ea',
-                  borderRadius: 6,
-                  padding: 12,
-                  fontSize: 13,
-                  color: '#374151',
-                  whiteSpace: 'pre-wrap',
-                  minHeight: 70
-                }}
-              >
+              <div style={{ fontSize: 12.5, color: '#334155', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                 {selectedEnquiry.notes || 'No preliminary notes recorded for this enquiry.'}
               </div>
-            </div>
+            </Card>
+
+            {/* Document Attachments Manager */}
+            <Card styles={{ body: { padding: 14 } }} style={{ borderRadius: 6, border: '1px solid #e2e8f0' }}>
+              <AttachmentManager
+                title="Site Measurement Photos & Drawings"
+                attachments={attachments}
+                onChange={handleDrawerAttachmentsChange}
+              />
+            </Card>
           </div>
         )}
       </Drawer>
 
       {/* CREATE / EDIT MODAL */}
       <Modal
-        title={editingEnquiry ? 'Edit Enquiry' : 'New Enquiry'}
+        title={editingEnquiry ? 'Edit Enquiry & Lead' : 'Create New Client Lead'}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
         destroyOnClose
-        width={540}
+        width={600}
       >
         <Form form={form} layout="vertical" onFinish={handleFormSubmit} style={{ marginTop: 16 }}>
           <Row gutter={16}>
             <Col span={14}>
               <Form.Item
                 name="clientName"
-                label="Customer Name"
+                label="Customer / Company Name"
                 rules={[{ required: true, message: 'Please enter customer name' }]}
               >
-                <Input placeholder="e.g. Acme Industrial Corp" />
+                <Input placeholder="e.g. Acme Warehouses Pvt Ltd" />
               </Form.Item>
             </Col>
             <Col span={10}>
@@ -572,12 +804,12 @@ const EnquiriesPage = () => {
           </Row>
 
           <Form.Item name="address" label="Site Address / Location">
-            <Input placeholder="Plot or street, City" />
+            <Input placeholder="Industrial Estate, Survey No., City" />
           </Form.Item>
 
           <Row gutter={16}>
             <Col span={14}>
-              <Form.Item name="roofType" label="Roof Model">
+              <Form.Item name="roofType" label="Roof Engineering Model">
                 <Select>
                   {ROOF_TYPES.map((t) => (
                     <Option key={t} value={t}>
@@ -588,7 +820,7 @@ const EnquiriesPage = () => {
               </Form.Item>
             </Col>
             <Col span={10}>
-              <Form.Item name="status" label="Initial Status">
+              <Form.Item name="status" label="Pipeline Stage">
                 <Select>
                   {STATUSES.map((s) => (
                     <Option key={s.key} value={s.key}>
@@ -600,14 +832,23 @@ const EnquiriesPage = () => {
             </Col>
           </Row>
 
-          <Form.Item name="notes" label="Field Notes">
-            <TextArea rows={3} placeholder="Span dimensions, height, site constraints..." />
+          <Form.Item name="notes" label="Field Notes & Requirements">
+            <TextArea rows={3} placeholder="Span dimensions, height, site constraints, column spacing..." />
           </Form.Item>
+
+          {/* Attachments inside modal */}
+          <div style={{ marginBottom: 16 }}>
+            <AttachmentManager
+              title="Site Photos / Blueprints"
+              attachments={attachments}
+              onChange={setAttachments}
+            />
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
             <Button onClick={() => setModalVisible(false)}>Cancel</Button>
-            <Button type="primary" htmlType="submit" style={{ background: '#0b315d', borderColor: '#0b315d' }}>
-              {editingEnquiry ? 'Save Changes' : 'Create Enquiry'}
+            <Button type="primary" htmlType="submit" style={{ background: '#0b2e59', borderColor: '#0b2e59' }}>
+              {editingEnquiry ? 'Save Changes' : 'Create Lead'}
             </Button>
           </div>
         </Form>

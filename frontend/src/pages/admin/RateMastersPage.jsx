@@ -282,7 +282,7 @@ const RateMastersPage = ({ defaultTab }) => {
           );
         }
         return (
-          <span style={{ fontWeight: 600, color: '#0b315d', fontSize: 13 }}>
+          <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }} className="tabular-nums">
             {record.unit === '%' ? `${val}%` : `₹ ${Number(val).toLocaleString('en-IN')}`}
           </span>
         );
@@ -294,7 +294,7 @@ const RateMastersPage = ({ defaultTab }) => {
       key: 'unit',
       width: 140,
       render: (val) => (
-        <span style={{ color: '#6b7280', fontSize: 12, background: '#f3f6f9', padding: '2px 8px', borderRadius: 4 }}>
+        <span className="ref-badge" style={{ fontSize: 11, padding: '2px 7px' }}>
           {val || '—'}
         </span>
       )

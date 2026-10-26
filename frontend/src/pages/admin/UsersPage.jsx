@@ -179,17 +179,18 @@ const UsersPage = () => {
             <Avatar
               size={34}
               style={{
-                backgroundColor: '#c9940a',
+                backgroundColor: '#0b2e59',
                 color: '#ffffff',
-                fontWeight: 600,
-                fontSize: 12
+                fontWeight: 700,
+                fontSize: 12,
+                border: '1px solid rgba(11, 46, 89, 0.2)'
               }}
             >
               {initials}
             </Avatar>
             <div>
-              <div style={{ fontWeight: 500, color: '#111827', fontSize: 13 }}>{record.name}</div>
-              <div style={{ color: '#6b7280', fontSize: 12 }}>{record.email}</div>
+              <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{record.name}</div>
+              <div style={{ color: '#64748b', fontSize: 12 }}>{record.email}</div>
             </div>
           </div>
         );
@@ -207,7 +208,7 @@ const UsersPage = () => {
             style={{
               backgroundColor: cfg.bg,
               color: cfg.color,
-              fontWeight: 500,
+              fontWeight: 600,
               fontSize: 11,
               borderRadius: 4,
               padding: '2px 8px',
@@ -223,19 +224,10 @@ const UsersPage = () => {
       title: 'STATUS',
       dataIndex: 'isActive',
       key: 'isActive',
+      width: 120,
       render: (isActive) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500 }}>
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              backgroundColor: isActive ? '#15803d' : '#9ca3af'
-            }}
-          />
-          <span style={{ color: isActive ? '#15803d' : '#6b7280' }}>
-            {isActive ? 'Active' : 'Inactive'}
-          </span>
+        <span className={`status-dot status-${isActive ? 'active' : 'draft'}`}>
+          <span>{isActive ? 'Active' : 'Inactive'}</span>
         </span>
       )
     },
@@ -302,19 +294,7 @@ const UsersPage = () => {
       </div>
 
       {/* ── FILTER BAR ── */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #dde3ea',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}
-      >
+      <div className="filter-bar">
         <Input
           prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
           placeholder="Search by name, email..."

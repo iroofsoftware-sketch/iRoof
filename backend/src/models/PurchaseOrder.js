@@ -1,37 +1,51 @@
 const mongoose = require('mongoose');
+const { ObjectId } = mongoose.Schema.Types;
 
-const poItemSchema = new mongoose.Schema({
-  materialName: String,
-  specification: String,
-  quantity: Number,
-  unit: String,
-  unitPrice: Number,
-  amount: Number,
-}, { _id: false });
+const purchaseOrderSchema = new mongoose.Schema(
+  {
+    refCode: { type: String, unique: true }, // PO-YYYY-NNNN (auto-generated)
+    purchaseRequestId: { type: ObjectId, ref: 'PurchaseRequest', required: true },
+    workOrderId: { type: ObjectId, ref: 'WorkOrder' },
+    supplierId: { type: ObjectId, ref: 'Supplier', required: true },
 
-const purchaseOrderSchema = new mongoose.Schema({
-  refCode: { type: String, unique: true },
-  purchaseRequestId: { type: mongoose.Schema.Types.ObjectId, ref: 'PurchaseRequest' },
-  workOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkOrder' },
-  supplierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
-  supplierName: String,
-  items: [poItemSchema],
-  subtotal: { type: Number, default: 0 },
-  gstAmount: { type: Number, default: 0 },
-  totalAmount: { type: Number, default: 0 },
-  status: { type: String, enum: ['draft', 'sent', 'acknowledged', 'delivered', 'cancelled'], default: 'draft' },
-  expectedDelivery: Date,
-  notes: String,
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-}, { timestamps: true });
+    poDate: { type: Date, default: Date.now },
+    expectedDelivery: { type: Date, required: true },
+    deliveryAddress: { type: String }, // site address or workshop address
 
-purchaseOrderSchema.pre('save', async function (next) {
-  if (!this.refCode) {
+    lineItems: [
+      {
+        description: { type: String, required: true },
+        quantity: { type: Number, required: true },
+        unit: { type: String, default: 'kg' },
+        rate: { type: Number, required: true },
+        amount: { type: Number, required: true }
+      }
+    ],
+
+    subtotal: { type: Number, required: true },
+    gstRate: { type: Number, default: 18 },
+    gstAmount: { type: Number, required: true },
+    grandTotal: { type: Number, required: true },
+
+    status: {
+      type: String,
+      enum: ['draft', 'sent', 'acknowledged', 'delivered', 'cancelled'],
+      default: 'draft'
+    },
+
+    notes: { type: String },
+    createdBy: { type: ObjectId, ref: 'User', required: true }
+  },
+  { timestamps: true }
+);
+
+// Auto refCode
+purchaseOrderSchema.pre('save', async function () {
+  if (this.isNew && !this.refCode) {
     const year = new Date().getFullYear();
-    const count = await mongoose.model('PurchaseOrder').countDocuments();
+    const count = await this.constructor.countDocuments();
     this.refCode = `PO-${year}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('PurchaseOrder', purchaseOrderSchema);

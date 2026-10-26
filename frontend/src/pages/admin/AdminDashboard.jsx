@@ -1,16 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Table, Button, Empty } from 'antd';
+import { Row, Col, Table, Button, Empty, Card, message } from 'antd';
 import {
   TeamOutlined,
   FileTextOutlined,
   CalculatorOutlined,
   CheckCircleOutlined,
   PlusOutlined,
-  ControlOutlined
+  ControlOutlined,
+  ShopOutlined,
+  UsergroupAddOutlined,
+  DownloadOutlined,
+  SettingOutlined,
+  EditOutlined,
+  EyeOutlined,
+  BuildOutlined,
+  RightCircleOutlined,
+  ArrowRightOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
+import RevenueAreaChart from '../../components/charts/RevenueAreaChart';
+import ConversionFunnelChart from '../../components/charts/ConversionFunnelChart';
+import StatusDonutChart from '../../components/charts/StatusDonutChart';
+import EnterpriseSettingsModal from '../../components/common/EnterpriseSettingsModal';
 
 const AdminDashboard = () => {
   const { user } = useAuthStore();
@@ -19,10 +33,16 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState({
     usersCount: 0,
     enquiriesCount: 0,
-    estimatesCount: 0
+    estimatesCount: 0,
+    workOrdersCount: 0
   });
+  const [workOrdersList, setWorkOrdersList] = useState([]);
+  const [pipelineTotal, setPipelineTotal] = useState(0);
   const [recentActivities, setRecentActivities] = useState([]);
+  const [funnelData, setFunnelData] = useState([]);
+  const [donutData, setDonutData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
 
   const hour = new Date().getHours();
   const greetingTime = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
@@ -38,23 +58,56 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const [usersRes, enqRes, estRes] = await Promise.all([
+        const [usersRes, enqRes, estRes, woRes] = await Promise.all([
           api.get('/admin/users').catch(() => ({ data: { users: [] } })),
           api.get('/enquiries').catch(() => ({ data: { enquiries: [] } })),
-          api.get('/estimates').catch(() => ({ data: { estimates: [] } }))
+          api.get('/estimates').catch(() => ({ data: { estimates: [] } })),
+          api.get('/workorders').catch(() => ({ data: { data: [] } }))
         ]);
 
         const users = usersRes.data?.users || [];
         const enquiries = enqRes.data?.enquiries || [];
         const estimates = estRes.data?.estimates || [];
+        const workOrders = woRes.data?.data || [];
 
         setStats({
           usersCount: users.length,
           enquiriesCount: enquiries.length,
-          estimatesCount: estimates.length
+          estimatesCount: estimates.length,
+          workOrdersCount: workOrders.length
         });
+        setWorkOrdersList(workOrders);
+        const totalVal = workOrders.reduce((sum, w) => sum + (Number(w.grandTotal) || 0), 0);
+        setPipelineTotal(totalVal);
 
-        // Combined activity feed
+        // Compute conversion funnel counts
+        const visitedCount = enquiries.filter((e) => ['visited', 'estimated', 'approved', 'completed'].includes(e.status)).length;
+        const estimatedCount = estimates.length;
+        const wonCount = workOrders.length;
+        const completedCount = workOrders.filter((w) => w.status === 'completed').length;
+
+        setFunnelData([
+          { label: 'Total Enquiries', count: enquiries.length || 1, color: '#0b2e59' },
+          { label: 'Site Inspected', count: visitedCount || 1, color: '#1d4ed8' },
+          { label: 'Quoted Estimates', count: estimatedCount || 1, color: '#0284c7' },
+          { label: 'Work Orders Won', count: wonCount || 1, color: '#c9940a' },
+          { label: 'Handover Completed', count: completedCount || 1, color: '#15803d' }
+        ]);
+
+        // Compute work order breakdown
+        const activeWO = workOrders.filter((w) => w.status === 'active').length;
+        const compWO = workOrders.filter((w) => w.status === 'completed').length;
+        const holdWO = workOrders.filter((w) => w.status === 'on_hold').length;
+        const draftWO = workOrders.filter((w) => ['draft', 'pending'].includes(w.status)).length;
+
+        setDonutData([
+          { label: 'Active Projects', count: activeWO || 1, color: '#0b2e59' },
+          { label: 'Completed', count: compWO || 1, color: '#15803d' },
+          { label: 'On Hold', count: holdWO || 0, color: '#d97706' },
+          { label: 'Drafted', count: draftWO || 0, color: '#64748b' }
+        ]);
+
+        // Combined activity feed with direct edit navigation
         const activities = [
           ...enquiries.slice(0, 3).map((e) => ({
             key: e._id,
@@ -62,7 +115,8 @@ const AdminDashboard = () => {
             type: 'Enquiry',
             detail: `${e.clientName} (${e.roofType || 'Standard'})`,
             status: e.status || 'new',
-            date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('en-IN') : '—'
+            date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('en-IN') : '—',
+            route: '/admin/enquiries'
           })),
           ...estimates.slice(0, 3).map((est) => ({
             key: est._id,
@@ -70,9 +124,19 @@ const AdminDashboard = () => {
             type: 'Estimate',
             detail: `${est.model} · ₹${(est.results?.costs?.grandTotal || 0).toLocaleString('en-IN')}`,
             status: est.status || 'estimated',
-            date: est.createdAt ? new Date(est.createdAt).toLocaleDateString('en-IN') : '—'
+            date: est.createdAt ? new Date(est.createdAt).toLocaleDateString('en-IN') : '—',
+            route: `/sales/estimates/${est._id}`
+          })),
+          ...workOrders.slice(0, 3).map((w) => ({
+            key: w._id,
+            ref: w.refCode || `WO-${w._id.slice(-4).toUpperCase()}`,
+            type: 'WorkOrder',
+            detail: `${w.clientName} · ${w.span || 0}m × ${w.length || 0}m (${w.roofModel || 'Standard'})`,
+            status: w.status || 'active',
+            date: w.createdAt ? new Date(w.createdAt).toLocaleDateString('en-IN') : '—',
+            route: `/projectmanager/workorders/${w._id}`
           }))
-        ].slice(0, 5);
+        ].slice(0, 6);
 
         setRecentActivities(activities);
       } catch (err) {
@@ -85,32 +149,63 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
+  const handleExportWorkOrdersCSV = () => {
+    if (!workOrdersList || workOrdersList.length === 0) {
+      message.info('No work orders available to export');
+      return;
+    }
+    const headers = ['Ref Code', 'Client Name', 'Status', 'Roof Model', 'Span (m)', 'Length (m)', 'Grand Total (INR)', 'Created Date'];
+    const rows = workOrdersList.map((w) => [
+      `"${w.refCode || ''}"`,
+      `"${(w.clientName || '').replace(/"/g, '""')}"`,
+      `"${w.status || ''}"`,
+      `"${w.roofModel || ''}"`,
+      w.span || '',
+      w.length || '',
+      w.grandTotal || 0,
+      `"${dayjs(w.createdAt).format('YYYY-MM-DD')}"`
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `iRoof_WorkOrders_${dayjs().format('YYYY-MM-DD')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    message.success('Work orders exported to CSV successfully');
+  };
+
   const columns = [
     {
       title: 'REF',
       dataIndex: 'ref',
       key: 'ref',
-      render: (text) => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>{text}</span>
+      width: 130,
+      render: (text) => <span className="ref-badge">{text}</span>
     },
     {
       title: 'TYPE',
       dataIndex: 'type',
       key: 'type',
-      render: (t) => <span style={{ fontWeight: 500 }}>{t}</span>
+      width: 120,
+      render: (type) => <span style={{ fontWeight: 600, color: '#0f172a' }}>{type}</span>
     },
     {
       title: 'DETAIL',
       dataIndex: 'detail',
       key: 'detail',
-      render: (d) => <span style={{ color: '#374151' }}>{d}</span>
+      render: (detail) => <span style={{ color: '#334155' }}>{detail}</span>
     },
     {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
-      render: (st) => (
-        <span className={`status-dot status-${st}`}>
-          <span style={{ textTransform: 'capitalize' }}>{st}</span>
+      width: 130,
+      render: (status) => (
+        <span className={`status-dot status-${status}`}>
+          <span style={{ textTransform: 'capitalize' }}>{status}</span>
         </span>
       )
     },
@@ -118,19 +213,84 @@ const AdminDashboard = () => {
       title: 'DATE',
       dataIndex: 'date',
       key: 'date',
-      render: (d) => <span style={{ color: '#6b7280', fontSize: 12 }}>{d}</span>
+      width: 120,
+      render: (d) => <span style={{ color: '#64748b', fontSize: 12.5 }} className="tabular-nums">{d}</span>
+    },
+    {
+      title: 'ACTIONS',
+      key: 'actions',
+      align: 'right',
+      render: (_, record) => (
+        <Button
+          type="text"
+          size="small"
+          icon={<EditOutlined />}
+          onClick={() => navigate(record.route)}
+          style={{ color: '#0b2e59', fontWeight: 600 }}
+        >
+          Manage / Edit
+        </Button>
+      )
     }
   ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* A) WELCOME ROW */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
-          Good {greetingTime}, {firstName}
-        </h1>
-        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-          System Administration · {formattedDate}
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1 className="page-title">
+            Good {greetingTime}, {firstName}
+          </h1>
+          <p className="page-subtitle">
+            Executive Roofing Enterprise Overview · {formattedDate}
+          </p>
+        </div>
+
+        {/* Quick Action Buttons */}
+        <div className="page-header__actions">
+          <Button
+            icon={<UsergroupAddOutlined />}
+            onClick={() => navigate('/admin/customers')}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 600 }}
+          >
+            Customers CRM
+          </Button>
+          <Button
+            icon={<PlusOutlined />}
+            onClick={() => navigate('/admin/users')}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 500 }}
+          >
+            Manage Users
+          </Button>
+          <Button
+            icon={<FileTextOutlined />}
+            onClick={() => navigate('/admin/enquiries')}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 500 }}
+          >
+            Pipeline
+          </Button>
+          <Button
+            icon={<ControlOutlined />}
+            onClick={() => navigate('/admin/rate-masters')}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 500 }}
+          >
+            Rate Masters
+          </Button>
+          <Button
+            icon={<SettingOutlined />}
+            onClick={() => setEnterpriseModalOpen(true)}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 600 }}
+          >
+            Enterprise Settings
+          </Button>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={handleExportWorkOrdersCSV}
+            style={{ background: '#0b2e59', color: '#ffffff', borderColor: '#0b2e59', fontWeight: 600 }}
+          >
+            Export CSV
+          </Button>
         </div>
       </div>
 
@@ -139,102 +299,222 @@ const AdminDashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Total Users</span>
+              <span className="stat-card__label">Total Staff Users</span>
               <div className="stat-card__icon" style={{ background: '#eff6ff', color: '#1e40af' }}>
                 <TeamOutlined />
               </div>
             </div>
             <div className="stat-card__value">{stats.usersCount}</div>
-            <div className="stat-card__meta">Across 8 system roles</div>
+            <div className="stat-card__meta">Across 8 operational roles</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Active Enquiries</span>
+              <span className="stat-card__label">Enquiries & Leads</span>
               <div className="stat-card__icon" style={{ background: '#fff7ed', color: '#c2410c' }}>
                 <FileTextOutlined />
               </div>
             </div>
             <div className="stat-card__value">{stats.enquiriesCount}</div>
-            <div className="stat-card__meta">Client leads in pipeline</div>
+            <div className="stat-card__meta">Active commercial inquiries</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Estimates Created</span>
+              <span className="stat-card__label">Engineering Estimates</span>
               <div className="stat-card__icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
                 <CalculatorOutlined />
               </div>
             </div>
             <div className="stat-card__value">{stats.estimatesCount}</div>
-            <div className="stat-card__meta">Engineering valuations</div>
+            <div className="stat-card__meta">Locked structural calculations</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">System Health</span>
-              <div className="stat-card__icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
+              <span className="stat-card__label">Active Project Pipeline</span>
+              <div className="stat-card__icon" style={{ background: '#ecfdf5', color: '#047857' }}>
                 <CheckCircleOutlined />
               </div>
             </div>
-            <div className="stat-card__value" style={{ color: '#15803d', fontSize: 24 }}>OK</div>
-            <div className="stat-card__meta">MongoDB Atlas online</div>
+            <div className="stat-card__value" style={{ fontSize: pipelineTotal > 0 ? 20 : 28 }}>
+              {pipelineTotal > 0 ? `₹ ${Math.round(pipelineTotal).toLocaleString('en-IN')}` : stats.workOrdersCount}
+            </div>
+            <div className="stat-card__meta">
+              {stats.workOrdersCount} Work Orders awarded
+            </div>
           </div>
         </Col>
       </Row>
 
-      {/* C) QUICK ACTIONS */}
-      <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Button
-          icon={<PlusOutlined />}
-          onClick={() => navigate('/admin/users')}
-          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
-        >
-          Add User
-        </Button>
-        <Button
-          icon={<FileTextOutlined />}
-          onClick={() => navigate('/admin/enquiries')}
-          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
-        >
-          View All Enquiries
-        </Button>
-        <Button
-          icon={<ControlOutlined />}
-          onClick={() => navigate('/admin/rate-masters')}
-          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
-        >
-          Rate Masters
-        </Button>
-      </div>
+      {/* C) VISUAL ANALYTICS ROW */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={15}>
+          <RevenueAreaChart />
+        </Col>
+        <Col xs={24} lg={9}>
+          <ConversionFunnelChart stages={funnelData} />
+        </Col>
+      </Row>
 
-      {/* D) RECENT ACTIVITY TABLE */}
-      <div className="content-card" style={{ marginTop: 20 }}>
-        <div className="content-card__header">
-          <div className="content-card__title">Recent Activity</div>
+      {/* D) OPERATIONS & RECENT ACTIVITY ROW */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={9}>
+          <StatusDonutChart segments={donutData} />
+        </Col>
+        <Col xs={24} lg={15}>
+          <div className="content-card" style={{ padding: 0, overflow: 'hidden', height: '100%' }}>
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #f1f5f9',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                Recent Operational Activity
+              </div>
+              <span style={{ fontSize: 12, color: '#64748b' }}>Live system ledger</span>
+            </div>
+            {recentActivities.length === 0 ? (
+              <div style={{ padding: '40px 0' }}>
+                <Empty description="No recent system transactions" />
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                dataSource={recentActivities}
+                pagination={false}
+                size="middle"
+              />
+            )}
+          </div>
+        </Col>
+      </Row>
+
+      {/* E) EXECUTIVE WORK ORDER PIPELINE & GATE CONTROL */}
+      <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid #f1f5f9',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 10
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+              Executive Project Pipeline & Gate Oversight
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+              Track active contracts, site surveys, CAD design drawings, workshop fabrication and handovers
+            </div>
+          </div>
           <Button
-            type="link"
-            onClick={() => navigate('/admin/enquiries')}
-            style={{ color: '#0b315d', padding: 0, fontSize: 13 }}
+            type="primary"
+            size="small"
+            icon={<ArrowRightOutlined />}
+            onClick={() => navigate('/projectmanager/workorders')}
+            style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
           >
-            View all →
+            All Work Orders
           </Button>
         </div>
+
         <Table
-          columns={columns}
-          dataSource={recentActivities}
-          size="small"
+          columns={[
+            {
+              title: 'REF CODE',
+              dataIndex: 'refCode',
+              key: 'refCode',
+              width: 140,
+              render: (t, r) => <span className="ref-badge">{t || `WO-${r._id.slice(-6).toUpperCase()}`}</span>
+            },
+            {
+              title: 'CLIENT / PROJECT',
+              dataIndex: 'clientName',
+              key: 'clientName',
+              render: (name, r) => (
+                <div>
+                  <div style={{ fontWeight: 600, color: '#0f172a' }}>{name}</div>
+                  <div style={{ fontSize: 11.5, color: '#64748b' }}>{r.siteAddress || 'Site address pending'}</div>
+                </div>
+              )
+            },
+            {
+              title: 'ROOF MODEL',
+              dataIndex: 'roofModel',
+              key: 'roofModel',
+              render: (m, r) => (
+                <span style={{ fontSize: 12.5, color: '#334155' }}>
+                  {m || 'Trussless Arch'} ({r.span || 0}m × {r.length || 0}m)
+                </span>
+              )
+            },
+            {
+              title: 'TOTAL VALUE',
+              dataIndex: 'grandTotal',
+              key: 'grandTotal',
+              align: 'right',
+              render: (v) => (
+                <span className="tabular-nums" style={{ fontWeight: 700, color: '#0b2e59' }}>
+                  ₹ {Math.round(v || 0).toLocaleString('en-IN')}
+                </span>
+              )
+            },
+            {
+              title: 'STAGE',
+              dataIndex: 'currentGate',
+              key: 'currentGate',
+              render: (g) => {
+                const gateMap = {
+                  gate1: { label: 'Site Survey', color: 'blue' },
+                  gate2: { label: 'Commercial Terms', color: 'orange' },
+                  gate3: { label: 'Design CAD', color: 'purple' },
+                  gate4: { label: 'Workshop Fab', color: 'cyan' },
+                  gate5: { label: 'Erection & Handover', color: 'green' }
+                };
+                const info = gateMap[g] || { label: g || 'Pending', color: 'default' };
+                return <span style={{ padding: '2px 8px', borderRadius: 4, background: '#f1f5f9', color: '#0f172a', fontWeight: 600, fontSize: 11.5 }}>{info.label}</span>;
+              }
+            },
+            {
+              title: 'ACTIONS',
+              key: 'actions',
+              align: 'right',
+              render: (_, r) => (
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => navigate(`/projectmanager/workorders/${r._id}`)}
+                  style={{ color: '#0b2e59', fontWeight: 600 }}
+                >
+                  Manage / Edit
+                </Button>
+              )
+            }
+          ]}
+          dataSource={workOrdersList.slice(0, 6)}
+          rowKey="_id"
           pagination={false}
-          loading={loading}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No recent activity" /> }}
+          size="middle"
         />
       </div>
+
+      {/* ── ENTERPRISE SETTINGS & COMPANY PROFILE MODAL ── */}
+      <EnterpriseSettingsModal open={enterpriseModalOpen} onClose={() => setEnterpriseModalOpen(false)} />
     </div>
   );
 };

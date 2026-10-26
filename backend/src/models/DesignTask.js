@@ -21,13 +21,12 @@ const designTaskSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-designTaskSchema.pre('save', async function (next) {
+designTaskSchema.pre('save', async function () {
   if (this.isNew && !this.refCode) {
     const year = new Date().getFullYear();
     const count = await this.constructor.countDocuments();
     this.refCode = `DT-${year}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('DesignTask', designTaskSchema);

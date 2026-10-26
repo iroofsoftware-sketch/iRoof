@@ -26,13 +26,12 @@ const siteVisitSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-siteVisitSchema.pre('save', async function (next) {
+siteVisitSchema.pre('save', async function () {
   if (this.isNew && !this.refCode) {
     const year = new Date().getFullYear();
     const count = await this.constructor.countDocuments();
     this.refCode = `SV-${year}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('SiteVisit', siteVisitSchema);

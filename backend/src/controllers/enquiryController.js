@@ -172,6 +172,7 @@ const updateEnquiry = async (req, res) => {
     }
     if (assignedTo !== undefined) enquiry.assignedTo = assignedTo || null;
     if (notes !== undefined) enquiry.notes = notes.trim();
+    if (req.body.attachments !== undefined) enquiry.attachments = req.body.attachments;
 
     await enquiry.save();
 

@@ -39,6 +39,9 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static uploads (blueprints, site photos, documents)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -53,15 +56,20 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/enquiries', enquiryRoutes);
 app.use('/api/estimates', estimateRoutes);
+app.use('/api/customers', require('./src/routes/customerRoutes'));
+app.use('/api/upload', require('./src/routes/uploadRoutes'));
 app.use('/api/workorders', require('./src/routes/workOrderRoutes'));
+app.use('/api/work-orders', require('./src/routes/workOrderRoutes'));
 app.use('/api/design-tasks', require('./src/routes/designTaskRoutes'));
 app.use('/api/purchase-requests', require('./src/routes/purchaseRequestRoutes'));
 app.use('/api/workshop-jobs', require('./src/routes/workshopJobRoutes'));
 app.use('/api/site-visits', require('./src/routes/siteVisitRoutes'));
+app.use('/api/invoices', require('./src/routes/invoiceRoutes'));
+app.use('/api/payments', require('./src/routes/paymentRoutes'));
+app.use('/api/suppliers', require('./src/routes/supplierRoutes'));
+app.use('/api/purchase-orders', require('./src/routes/purchaseOrderRoutes'));
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 app.use('/api/search', require('./src/routes/searchRoutes'));
-app.use('/api/invoices', require('./src/routes/invoiceRoutes'));
-app.use('/api/customers', require('./src/routes/customerRoutes'));
 
 // 404 handler
 app.use((req, res) => {

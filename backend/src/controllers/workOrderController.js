@@ -5,20 +5,11 @@ const WorkshopJob = require('../models/WorkshopJob');
 const SiteVisit = require('../models/SiteVisit');
 const Estimate = require('../models/Estimate');
 const { Enquiry } = require('../models/Enquiry');
-const Notification = require('../models/Notification');
-
-// Helper: create notification
-const notify = async ({ title, message, type = 'info', targetRoles, relatedId, createdBy }) => {
-  try {
-    await Notification.create({ title, message, type, targetRoles, relatedId, relatedModel: 'WorkOrder', createdBy });
-  } catch (e) {
-    console.error('Notification error:', e.message);
-  }
-};
+const { createNotification } = require('./notificationController');
 
 // @desc    Get all work orders
 // @route   GET /api/workorders
-// @access  Private (admin, projectmanager, accounts, design, purchase, workshop)
+// @access  Private (all authorized roles)
 const getWorkOrders = async (req, res) => {
   try {
     const { status, priority, search, limit, page } = req.query;
@@ -41,7 +32,9 @@ const getWorkOrders = async (req, res) => {
       .populate('estimateId', 'model inputData results status')
       .populate('createdBy', 'name email')
       .populate('assignedPM', 'name email')
-      .populate('stageHistory.performedBy', 'name')
+      .populate('stageHistory.actionBy', 'name email role')
+      .populate('accountsApproval.approvedBy', 'name email')
+      .populate('materialsVerified.verifiedBy', 'name email')
       .sort({ createdAt: -1 });
 
     if (limit) query.limit(Number(limit));
@@ -55,27 +48,862 @@ const getWorkOrders = async (req, res) => {
     return res.status(200).json({ success: true, count: workOrders.length, total, data: workOrders });
   } catch (error) {
     console.error('Error fetching work orders:', error);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve work orders',
+      error: error.message
+    });
   }
 };
 
-// @desc    Get work order stats
+// @desc    Get single work order with all linked tasks and stage history
+// @route   GET /api/workorders/:id
+// @access  Private (all authorized roles)
+const getWorkOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const workOrder = await WorkOrder.findById(id)
+      .populate('enquiryId', 'clientName phone email address roofType notes')
+      .populate('estimateId')
+      .populate('createdBy', 'name email')
+      .populate('assignedPM', 'name email')
+      .populate('stageHistory.actionBy', 'name email role')
+      .populate('accountsApproval.approvedBy', 'name email')
+      .populate('materialsVerified.verifiedBy', 'name email');
+
+    if (!workOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Work order not found'
+      });
+    }
+
+    // Find linked child documents
+    const [designTask, purchaseRequest, workshopJob, siteVisit] = await Promise.all([
+      DesignTask.findOne({ workOrderId: workOrder._id }).populate('assignedTo', 'name email'),
+      PurchaseRequest.findOne({ workOrderId: workOrder._id }).populate('assignedTo', 'name email'),
+      WorkshopJob.findOne({ workOrderId: workOrder._id }).populate('assignedTo', 'name email'),
+      SiteVisit.findOne({ workOrderId: workOrder._id }).populate('assignedTo', 'name email')
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...workOrder.toObject(),
+        designTask,
+        purchaseRequest,
+        workshopJob,
+        siteVisit
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching work order by id:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve work order details',
+      error: error.message
+    });
+  }
+};
+
+// Helper to prefill initial BOM line items from estimate
+const generateInitialBOM = (estimate) => {
+  const inputData = estimate.inputData || {};
+  const results = estimate.results || {};
+  const costs = results.costs || {};
+  const span = inputData.span || results.span || 0;
+  const length = inputData.length || results.length || 0;
+
+  return [
+    {
+      name: `Roofing Sheets (${results.th || 0.6}mm BMT Profile)`,
+      quantity: Math.round(results.sheetKg || (span * length * 4.5)),
+      unit: 'kg',
+      specification: `${results.panels || 0} panels cut to ${results.finalCut?.toFixed(2) || 0}m arch arc`,
+      estimatedCost: costs.sheetCost || 0,
+      notes: 'Self-supported arch panels'
+    },
+    {
+      name: 'Structural Steel Sections & Columns',
+      quantity: Math.round(results.sheetKg || (span * length * 5)),
+      unit: 'kg',
+      specification: `${results.bays || 1} bays, ${results.ncol || 2} columns with baseplates`,
+      estimatedCost: costs.labourCost || 0,
+      notes: 'Structural frame and foundation tie elements'
+    },
+    {
+      name: 'Hardware, Fasteners, Anchor Bolts & Silicone Sealants',
+      quantity: 1,
+      unit: 'set',
+      specification: 'High tensile fasteners, anchor bolts and UV-resistant sealants',
+      estimatedCost: costs.consumables || 0,
+      notes: 'Full installation and erection kit'
+    }
+  ];
+};
+
+// @desc    GATE 1 (SALES): Issue Sales Work Order & Approval to Accounts
+// @route   POST /api/workorders/issue-from-sales or POST /api/workorders
+// @access  Private (sales, admin, projectmanager)
+const createWorkOrder = async (req, res) => {
+  try {
+    const { estimateId, targetDate, priority, notes, assignedPM } = req.body;
+
+    if (!estimateId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Estimate ID is required to create a work order'
+      });
+    }
+
+    const estimate = await Estimate.findById(estimateId).populate('enquiryId');
+    if (!estimate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Source estimate not found'
+      });
+    }
+
+    const enquiry = estimate.enquiryId || {};
+    const inputData = estimate.inputData || {};
+    const results = estimate.results || {};
+    const costs = results.costs || {};
+
+    const clientName = enquiry.clientName || inputData.clientName || 'General Client';
+    const siteAddress = enquiry.address || inputData.location || inputData.address || 'Site Location';
+    const roofModel = estimate.model || 'Standard Model';
+    const span = inputData.span || results.span || 0;
+    const length = inputData.length || results.length || 0;
+    const height = inputData.height || results.height || 0;
+    const grandTotal = costs.grandTotal || costs.beforeGst || 0;
+
+    const initialBOM = generateInitialBOM(estimate);
+
+    // Create Work Order in 'pending_accounts_approval' status
+    const workOrder = new WorkOrder({
+      enquiryId: estimate.enquiryId?._id || estimate.enquiryId,
+      estimateId: estimate._id,
+      clientName,
+      siteAddress,
+      roofModel,
+      span,
+      length,
+      height,
+      grandTotal,
+      status: 'pending_accounts_approval',
+      priority: priority || 'medium',
+      targetDate: targetDate || undefined,
+      notes: notes || '',
+      materialList: initialBOM,
+      stageHistory: [
+        {
+          stage: 'sales_issued',
+          actionBy: req.user._id,
+          actionRole: req.user.role,
+          timestamp: new Date(),
+          notes: notes || 'Sales Work Order & Approval issued to Accounts'
+        }
+      ],
+      createdBy: req.user._id,
+      assignedPM: assignedPM || undefined
+    });
+
+    await workOrder.save();
+
+    // Update estimate status
+    estimate.status = 'work_order_issued';
+    await estimate.save();
+
+    // Trigger notification to Accounts
+    createNotification({
+      recipientRole: 'accounts',
+      title: `New Work Order: ${workOrder.refCode}`,
+      message: `Sales issued Work Order for ${workOrder.clientName}. Awaiting commercial confirmation and advance.`,
+      type: 'action_required',
+      link: `/projectmanager/workorders/${workOrder._id}`,
+      refCode: workOrder.refCode,
+      createdBy: req.user._id
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Sales Work Order issued to Accounts for commercial approval',
+      workOrder
+    });
+  } catch (error) {
+    console.error('Error creating work order:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to issue work order',
+      error: error.message
+    });
+  }
+};
+
+// @desc    GATE 2 (ACCOUNTS): Confirm client quotation & payment terms; Issue Work Order & Approval to Design
+// @route   POST /api/workorders/:id/accounts-approve
+// @access  Private (accounts, admin)
+const accountsApprove = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paymentTerms, advanceReceived, notes } = req.body;
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found' });
+    }
+
+    workOrder.status = 'pending_design';
+    workOrder.accountsApproval = {
+      approved: true,
+      approvedAt: new Date(),
+      approvedBy: req.user._id,
+      paymentTerms: paymentTerms || 'Agreed terms',
+      advanceReceived: Number(advanceReceived) || 0,
+      notes: notes || ''
+    };
+
+    workOrder.stageHistory.push({
+      stage: 'accounts_approved',
+      actionBy: req.user._id,
+      actionRole: req.user.role,
+      timestamp: new Date(),
+      notes: notes || `Quotation & payment confirmed. Advance: ₹${Number(advanceReceived || 0).toLocaleString('en-IN')}`
+    });
+
+    await workOrder.save();
+
+    // Auto-create or activate Design Task for Design department
+    let designTask = await DesignTask.findOne({ workOrderId: workOrder._id });
+    if (!designTask) {
+      designTask = await DesignTask.create({
+        workOrderId: workOrder._id,
+        title: `Structural Fabrication Drawings — ${workOrder.refCode}`,
+        description: `Prepare structural fabrication & erection drawings for ${workOrder.clientName} (${workOrder.roofModel}, ${workOrder.span}m x ${workOrder.length}m)`,
+        status: 'in_progress',
+        dueDate: workOrder.targetDate,
+        createdBy: req.user._id
+      });
+    } else {
+      designTask.status = 'in_progress';
+      await designTask.save();
+    }
+
+    // Trigger notification to Design
+    createNotification({
+      recipientRole: 'design',
+      title: `Drawings Required: ${workOrder.refCode}`,
+      message: `Commercial terms confirmed for ${workOrder.clientName}. Ready for structural CAD drawings.`,
+      type: 'action_required',
+      link: `/projectmanager/workorders/${workOrder._id}`,
+      refCode: workOrder.refCode,
+      createdBy: req.user._id
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Commercial terms confirmed. Work Order handed over to Design.',
+      workOrder,
+      designTask
+    });
+  } catch (error) {
+    console.error('Accounts approval error:', error);
+    return res.status(500).json({ success: false, message: 'Approval failed', error: error.message });
+  }
+};
+
+// @desc    GATE 3 (DESIGN): Prepare drawings & hand over Approval and Drawings to Project Manager
+// @route   POST /api/workorders/:id/design-submit
+// @access  Private (design, admin)
+const designSubmitDrawings = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { drawingFiles, notes } = req.body;
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found' });
+    }
+
+    if (drawingFiles && Array.isArray(drawingFiles) && drawingFiles.length > 0) {
+      workOrder.drawingFiles = [...(workOrder.drawingFiles || []), ...drawingFiles];
+    }
+
+    workOrder.status = 'pending_pm_review';
+    workOrder.revisionNotes = ''; // clear any prior revision requests
+
+    workOrder.stageHistory.push({
+      stage: 'drawings_submitted',
+      actionBy: req.user._id,
+      actionRole: req.user.role,
+      timestamp: new Date(),
+      notes: notes || 'Structural drawings prepared and submitted to Project Manager'
+    });
+
+    await workOrder.save();
+
+    // Update Design Task status
+    const designTask = await DesignTask.findOne({ workOrderId: workOrder._id });
+    if (designTask) {
+      designTask.status = 'review';
+      if (drawingFiles && drawingFiles.length > 0) {
+        designTask.drawingFiles = [...(designTask.drawingFiles || []), ...drawingFiles];
+      }
+      await designTask.save();
+    }
+
+    // Trigger notification to Project Manager
+    createNotification({
+      recipientRole: 'projectmanager',
+      title: `Drawings Submitted: ${workOrder.refCode}`,
+      message: `Structural drawings submitted for ${workOrder.clientName}. Awaiting Material List preparation & PM review.`,
+      type: 'action_required',
+      link: `/projectmanager/workorders/${workOrder._id}`,
+      refCode: workOrder.refCode,
+      createdBy: req.user._id
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Drawings handed over to Project Manager for material list preparation and review',
+      workOrder,
+      designTask
+    });
+  } catch (error) {
+    console.error('Design submit error:', error);
+    return res.status(500).json({ success: false, message: 'Submission failed', error: error.message });
+  }
+};
+
+// @desc    GATE 4 (PROJECT MANAGER): Prepare / verify Material List & decide (Revise drawing OR Release to Purchase & Accounts)
+// @route   POST /api/workorders/:id/pm-review
+// @access  Private (projectmanager, admin)
+const pmReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { decision, materialList, revisionNotes, notes } = req.body;
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found' });
+    }
+
+    if (decision === 'revise') {
+      // Loop back to Design for drawing revision
+      workOrder.status = 'drawing_revision';
+      workOrder.revisionNotes = revisionNotes || 'Drawing revision requested by Project Manager';
+      workOrder.stageHistory.push({
+        stage: 'drawing_revision_requested',
+        actionBy: req.user._id,
+        actionRole: req.user.role,
+        timestamp: new Date(),
+        notes: revisionNotes || 'Revision required before material list finalization'
+      });
+
+      await workOrder.save();
+
+      const designTask = await DesignTask.findOne({ workOrderId: workOrder._id });
+      if (designTask) {
+        designTask.status = 'rejected';
+        designTask.notes = revisionNotes;
+        await designTask.save();
+      }
+
+      // Trigger revision notification to Design
+      createNotification({
+        recipientRole: 'design',
+        title: `Drawing Revision Requested: ${workOrder.refCode}`,
+        message: `Project Manager requested drawing revisions: ${revisionNotes || 'Inspect notes and resubmit'}`,
+        type: 'warning',
+        link: `/projectmanager/workorders/${workOrder._id}`,
+        refCode: workOrder.refCode,
+        createdBy: req.user._id
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Drawing revision requested and sent back to Design Engineer',
+        workOrder
+      });
+    }
+
+    // Decision === 'approve': release Material List to Purchase & Accounts
+    if (materialList && Array.isArray(materialList)) {
+      workOrder.materialList = materialList;
+    }
+
+    workOrder.status = 'pending_purchase';
+    workOrder.stageHistory.push({
+      stage: 'material_list_released',
+      actionBy: req.user._id,
+      actionRole: req.user.role,
+      timestamp: new Date(),
+      notes: notes || 'Approval, Drawings and Material List released to Purchase and Accounts'
+    });
+
+    await workOrder.save();
+
+    // Auto-create or update Purchase Request with the verified Material List
+    let purchaseRequest = await PurchaseRequest.findOne({ workOrderId: workOrder._id });
+    const prItems = (workOrder.materialList || []).map((m) => ({
+      name: m.name,
+      quantity: m.quantity,
+      unit: m.unit || 'kg',
+      estimatedCost: m.estimatedCost || 0,
+      notes: m.specification || m.notes || ''
+    }));
+
+    if (!purchaseRequest) {
+      purchaseRequest = await PurchaseRequest.create({
+        workOrderId: workOrder._id,
+        items: prItems,
+        status: 'pending',
+        totalEstimate: workOrder.grandTotal,
+        notes: `Procurement based on PM Material List for ${workOrder.refCode}`,
+        createdBy: req.user._id
+      });
+    } else {
+      purchaseRequest.items = prItems;
+      purchaseRequest.status = 'pending';
+      await purchaseRequest.save();
+    }
+
+    const designTask = await DesignTask.findOne({ workOrderId: workOrder._id });
+    if (designTask) {
+      designTask.status = 'approved';
+      await designTask.save();
+    }
+
+    // Trigger notification to Purchase & Accounts
+    createNotification({
+      recipientRole: 'purchase',
+      title: `Material List Released: ${workOrder.refCode}`,
+      message: `Project Manager released BOM for ${workOrder.clientName}. Ready for procurement.`,
+      type: 'action_required',
+      link: `/projectmanager/workorders/${workOrder._id}`,
+      refCode: workOrder.refCode,
+      createdBy: req.user._id
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Approval, Drawings and Material List released to Purchase and Accounts',
+      workOrder,
+      purchaseRequest
+    });
+  } catch (error) {
+    console.error('PM review error:', error);
+    return res.status(500).json({ success: false, message: 'PM review failed', error: error.message });
+  }
+};
+
+// @desc    GATE 5 (PURCHASE): Mark materials ordered from suppliers
+// @route   POST /api/workorders/:id/purchase-ordered
+// @access  Private (purchase, admin)
+const purchaseMarkOrdered = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { supplierName, notes } = req.body;
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found' });
+    }
+
+    workOrder.status = 'pending_delivery';
+    workOrder.stageHistory.push({
+      stage: 'purchase_ordered',
+      actionBy: req.user._id,
+      actionRole: req.user.role,
+      timestamp: new Date(),
+      notes: notes || `Purchase orders issued to suppliers: ${supplierName || 'Selected Suppliers'}`
+    });
+
+    await workOrder.save();
+
+    const pr = await PurchaseRequest.findOne({ workOrderId: workOrder._id });
+    if (pr) {
+      pr.status = 'ordered';
+      if (supplierName) pr.supplierName = supplierName;
+      await pr.save();
+    }
+
+    // Trigger notification to Workshop
+    createNotification({
+      recipientRole: 'workshop',
+      title: `Materials Ordered: ${workOrder.refCode}`,
+      message: `Purchase orders issued to suppliers (${supplierName || 'Suppliers'}) for ${workOrder.clientName}. Awaiting delivery to Workshop.`,
+      type: 'info',
+      link: `/projectmanager/workorders/${workOrder._id}`,
+      refCode: workOrder.refCode,
+      createdBy: req.user._id
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Materials ordered from suppliers. Awaiting delivery to Workshop.',
+      workOrder
+    });
+  } catch (error) {
+    console.error('Purchase ordered error:', error);
+    return res.status(500).json({ success: false, message: 'Action failed', error: error.message });
+  }
+};
+
+// @desc    GATE 6A (WORKSHOP): Check received physical materials against Material List & Confirm Delivery
+// @route   POST /api/workorders/:id/workshop-verify-materials
+// @access  Private (workshop, admin)
+const workshopVerifyMaterials = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found' });
+    }
+
+    workOrder.status = 'materials_received';
+    workOrder.materialsVerified = {
+      verified: true,
+      verifiedAt: new Date(),
+      verifiedBy: req.user._id,
+      notes: notes || 'Physical materials verified against Material List'
+    };
+
+    workOrder.stageHistory.push({
+      stage: 'materials_verified',
+      actionBy: req.user._id,
+      actionRole: req.user.role,
+      timestamp: new Date(),
+      notes: notes || 'Materials delivered to workshop and verified against BOM'
+    });
+
+    await workOrder.save();
+
+    // Auto-create or update Workshop Job
+    let workshopJob = await WorkshopJob.findOne({ workOrderId: workOrder._id });
+    if (!workshopJob) {
+      workshopJob = await WorkshopJob.create({
+        workOrderId: workOrder._id,
+        title: `Fabrication & Profiling — ${workOrder.refCode}`,
+        description: `Material checked and verified for ${workOrder.clientName}`,
+        status: 'material_ready',
+        startDate: new Date(),
+        endDate: workOrder.targetDate,
+        createdBy: req.user._id
+      });
+    } else {
+      workshopJob.status = 'material_ready';
+      await workshopJob.save();
+    }
+
+    // Trigger notification to Project Manager
+    createNotification({
+      recipientRole: 'projectmanager',
+      title: `Materials Verified (GRN): ${workOrder.refCode}`,
+      message: `Workshop verified delivered materials against BOM for ${workOrder.clientName}. Ready for fabrication.`,
+      type: 'success',
+      link: `/projectmanager/workorders/${workOrder._id}`,
+      refCode: workOrder.refCode,
+      createdBy: req.user._id
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Delivered materials verified against Material List. Ready for fabrication.',
+      workOrder,
+      workshopJob
+    });
+  } catch (error) {
+    console.error('Workshop verify error:', error);
+    return res.status(500).json({ success: false, message: 'Verification failed', error: error.message });
+  }
+};
+
+// @desc    GATE 6B (WORKSHOP): Start fabrication (Material / sheet production) as per approval
+// @route   POST /api/workorders/:id/workshop-start-fabrication
+// @access  Private (workshop, admin)
+const workshopStartFabrication = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found' });
+    }
+
+    workOrder.status = 'in_fabrication';
+    workOrder.stageHistory.push({
+      stage: 'fabrication_started',
+      actionBy: req.user._id,
+      actionRole: req.user.role,
+      timestamp: new Date(),
+      notes: notes || 'Fabrication and arch sheet profiling started in workshop'
+    });
+
+    await workOrder.save();
+
+    const workshopJob = await WorkshopJob.findOne({ workOrderId: workOrder._id });
+    if (workshopJob) {
+      workshopJob.status = 'in_progress';
+      await workshopJob.save();
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Fabrication commenced in Workshop',
+      workOrder
+    });
+  } catch (error) {
+    console.error('Start fabrication error:', error);
+    return res.status(500).json({ success: false, message: 'Action failed', error: error.message });
+  }
+};
+
+// @desc    GATE 7 (WORKSHOP / PM): Fabrication complete / Work Proceeds
+// @route   POST /api/workorders/:id/workshop-complete
+// @access  Private (workshop, projectmanager, admin)
+const workshopComplete = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found' });
+    }
+
+    workOrder.status = 'completed';
+    workOrder.stageHistory.push({
+      stage: 'completed',
+      actionBy: req.user._id,
+      actionRole: req.user.role,
+      timestamp: new Date(),
+      notes: notes || 'Fabrication completed and ready for site dispatch/erection'
+    });
+
+    await workOrder.save();
+
+    const workshopJob = await WorkshopJob.findOne({ workOrderId: workOrder._id });
+    if (workshopJob) {
+      workshopJob.status = 'completed';
+      await workshopJob.save();
+    }
+
+    // Trigger notification to All
+    createNotification({
+      recipientRole: 'all',
+      title: `Fabrication Complete: ${workOrder.refCode}`,
+      message: `Production finished for ${workOrder.clientName}. Ready for site dispatch and handover.`,
+      type: 'success',
+      link: `/projectmanager/workorders/${workOrder._id}`,
+      refCode: workOrder.refCode,
+      createdBy: req.user._id
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Fabrication and production completed successfully',
+      workOrder
+    });
+  } catch (error) {
+    console.error('Workshop complete error:', error);
+    return res.status(500).json({ success: false, message: 'Action failed', error: error.message });
+  }
+};
+
+// @desc    Add manual operational note to work order audit timeline
+// @route   POST /api/workorders/:id/log-note
+// @access  Private (all authorized roles)
+const logWorkOrderNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { note } = req.body;
+    if (!note || !note.trim()) {
+      return res.status(400).json({ success: false, message: 'Note text is required' });
+    }
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found' });
+    }
+
+    workOrder.stageHistory.push({
+      stage: 'operational_note',
+      actionBy: req.user._id,
+      actionRole: req.user.role,
+      timestamp: new Date(),
+      notes: note.trim()
+    });
+
+    await workOrder.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Operational note logged to audit trail',
+      stageHistory: workOrder.stageHistory
+    });
+  } catch (error) {
+    console.error('Error logging note:', error);
+    return res.status(500).json({ success: false, message: 'Failed to log note', error: error.message });
+  }
+};
+
+// @desc    Update / save attachments to work order
+// @route   PATCH /api/workorders/:id/attachments
+// @access  Private (all authorized roles)
+const updateWorkOrderAttachments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { attachments } = req.body;
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found' });
+    }
+
+    workOrder.attachments = Array.isArray(attachments) ? attachments : [];
+    await workOrder.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Attachments saved successfully',
+      attachments: workOrder.attachments
+    });
+  } catch (error) {
+    console.error('Error updating attachments:', error);
+    return res.status(500).json({ success: false, message: 'Failed to save attachments', error: error.message });
+  }
+};
+
+// @desc    Update work order general info
+// @route   PATCH /api/workorders/:id
+// @access  Private (admin, projectmanager)
+const updateWorkOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, priority, targetDate, notes, assignedPM } = req.body;
+
+    const workOrder = await WorkOrder.findById(id);
+    if (!workOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Work order not found'
+      });
+    }
+
+    if (status) workOrder.status = status;
+    if (priority) workOrder.priority = priority;
+    if (targetDate !== undefined) workOrder.targetDate = targetDate;
+    if (notes !== undefined) workOrder.notes = notes;
+    if (assignedPM) workOrder.assignedPM = assignedPM;
+    if (req.body.attachments !== undefined) workOrder.attachments = req.body.attachments;
+    if (req.body.materialList !== undefined) workOrder.materialList = req.body.materialList;
+
+    await workOrder.save();
+
+    const populated = await WorkOrder.findById(id)
+      .populate('enquiryId', 'clientName phone')
+      .populate('assignedPM', 'name email');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Work order updated successfully',
+      data: populated
+    });
+  } catch (error) {
+    console.error('Error updating work order:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update work order',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Delete work order and cascade child documents
+// @route   DELETE /api/workorders/:id
+// @access  Private (admin only)
+const deleteWorkOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const workOrder = await WorkOrder.findByIdAndDelete(id);
+    if (!workOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Work order not found'
+      });
+    }
+
+    // Cascade delete child tasks
+    await Promise.all([
+      DesignTask.deleteMany({ workOrderId: id }),
+      PurchaseRequest.deleteMany({ workOrderId: id }),
+      WorkshopJob.deleteMany({ workOrderId: id }),
+      SiteVisit.deleteMany({ workOrderId: id })
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Work order and all associated tasks deleted'
+    });
+  } catch (error) {
+    console.error('Error deleting work order:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete work order',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get work order stats by stage
 // @route   GET /api/workorders/stats
+// @access  Private (all authorized roles)
 const getWorkOrderStats = async (req, res) => {
   try {
-    const pipeline = [
-      { $group: { _id: '$status', count: { $sum: 1 }, totalValue: { $sum: '$grandTotal' } } }
-    ];
-    const stats = await WorkOrder.aggregate(pipeline);
-    const total = await WorkOrder.countDocuments();
-    const totalValue = await WorkOrder.aggregate([{ $group: { _id: null, sum: { $sum: '$grandTotal' } } }]);
+    const [
+      total,
+      pending_accounts,
+      pending_design,
+      pending_pm_review,
+      drawing_revision,
+      pending_purchase,
+      pending_delivery,
+      materials_received,
+      in_fabrication,
+      completed
+    ] = await Promise.all([
+      WorkOrder.countDocuments(),
+      WorkOrder.countDocuments({ status: 'pending_accounts_approval' }),
+      WorkOrder.countDocuments({ status: 'pending_design' }),
+      WorkOrder.countDocuments({ status: 'pending_pm_review' }),
+      WorkOrder.countDocuments({ status: 'drawing_revision' }),
+      WorkOrder.countDocuments({ status: 'pending_purchase' }),
+      WorkOrder.countDocuments({ status: 'pending_delivery' }),
+      WorkOrder.countDocuments({ status: 'materials_received' }),
+      WorkOrder.countDocuments({ status: 'in_fabrication' }),
+      WorkOrder.countDocuments({ status: 'completed' })
+    ]);
 
     return res.status(200).json({
       success: true,
       data: {
         byStatus: stats,
         total,
-        totalPipelineValue: totalValue[0]?.sum || 0,
+        pending_accounts,
+        pending_design,
+        pending_pm_review,
+        drawing_revision,
+        pending_purchase,
+        pending_delivery,
+        materials_received,
+        in_fabrication,
+        completed
       }
     });
   } catch (error) {
@@ -355,8 +1183,19 @@ const logNote = async (req, res) => {
 };
 
 module.exports = {
-  getWorkOrders, getWorkOrderById, createWorkOrder, updateWorkOrder, deleteWorkOrder, getWorkOrderStats,
-  issueFromSales, accountsApprove, designSubmit, pmReview, purchaseOrdered,
-  workshopVerifyMaterials, workshopStartFabrication, workshopComplete,
-  addAttachments, logNote
+  getWorkOrders,
+  getWorkOrderById,
+  createWorkOrder,
+  accountsApprove,
+  designSubmitDrawings,
+  pmReview,
+  purchaseMarkOrdered,
+  workshopVerifyMaterials,
+  workshopStartFabrication,
+  workshopComplete,
+  updateWorkOrder,
+  deleteWorkOrder,
+  getWorkOrderStats,
+  logWorkOrderNote,
+  updateWorkOrderAttachments
 };

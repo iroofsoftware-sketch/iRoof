@@ -1,209 +1,863 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Card, Table, Button, Input, Modal, Form, Space, Tag, Drawer,
-  Row, Col, Statistic, Typography, message, Tooltip
+  Card,
+  Table,
+  Button,
+  Input,
+  Select,
+  Tag,
+  Modal,
+  Form,
+  Space,
+  Row,
+  Col,
+  Statistic,
+  Drawer,
+  Tabs,
+  Typography,
+  message,
+  Popconfirm,
+  Badge,
+  Divider,
+  Avatar
 } from 'antd';
 import {
-  PlusOutlined, SearchOutlined, UserOutlined, PhoneOutlined,
-  MailOutlined, EnvironmentOutlined, EditOutlined, IdcardOutlined
+  UserAddOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  SyncOutlined,
+  TeamOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  EnvironmentOutlined,
+  FileTextOutlined,
+  ProfileOutlined,
+  AccountBookOutlined,
+  CalculatorOutlined,
+  EyeOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ShopOutlined
 } from '@ant-design/icons';
-import axios from '../../api/axios';
+import { useNavigate } from 'react-router-dom';
+import { customerService } from '../../services/customerService';
 
-const { Title, Text } = Typography;
+const { Text, Title } = Typography;
+const { Option } = Select;
 
-export default function CustomersPage() {
+const formatINR = (val) => {
+  if (val === undefined || val === null) return '₹0';
+  return `₹${Number(val).toLocaleString('en-IN')}`;
+};
+
+const categoryColors = {
+  Industrial: 'blue',
+  Commercial: 'purple',
+  'PEB Builder': 'orange',
+  Architect: 'cyan',
+  Individual: 'green',
+  'Govt/Infra': 'volcano'
+};
+
+const CustomersPage = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalCustomers: 0,
+    activeCustomers: 0,
+    leadCustomers: 0,
+    totalInvoiced: 0,
+    totalPaid: 0,
+    totalDue: 0
+  });
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [editMode, setEditMode] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
 
-  const load = async (q = '') => {
+  // 360 Drawer State
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [detailData, setDetailData] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
-      const r = await axios.get(`/customers${q ? `?search=${q}` : ''}`);
-      setCustomers(r.data.data || []);
+      const res = await customerService.getCustomers({
+        search: search.trim(),
+        category: categoryFilter,
+        status: statusFilter
+      });
+      if (res && res.success) {
+        setCustomers(res.data || []);
+        if (res.stats) setStats(res.stats);
+      }
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+      message.error('Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
+  }, [search, categoryFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  const handleSync = async () => {
+    try {
+      setLoading(true);
+      const res = await customerService.syncCustomers();
+      message.success(res.message || 'Customers synchronized from existing records');
+      fetchCustomers();
+    } catch (err) {
+      console.error('Sync failed:', err);
+      message.error('Customer sync failed');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
-
-  const handleSave = async (values) => {
-    try {
-      if (editMode && selected) {
-        await axios.patch(`/customers/${selected._id}`, values);
-        message.success('Customer updated');
-      } else {
-        await axios.post('/customers', values);
-        message.success('Customer added');
-      }
-      setShowModal(false);
+  const handleOpenModal = (cust = null) => {
+    setEditingCustomer(cust);
+    if (cust) {
+      form.setFieldsValue(cust);
+    } else {
       form.resetFields();
-      setEditMode(false);
-      load();
-    } catch {
-      message.error('Failed to save customer');
+      form.setFieldsValue({
+        category: 'Industrial',
+        status: 'Active',
+        state: 'Tamil Nadu',
+        paymentTerms: '30 days'
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSubmitForm = async () => {
+    try {
+      const values = await form.validateFields();
+      setSubmitting(true);
+
+      if (editingCustomer) {
+        await customerService.updateCustomer(editingCustomer._id, values);
+        message.success('Customer profile updated successfully');
+      } else {
+        await customerService.createCustomer(values);
+        message.success('New customer created successfully');
+      }
+
+      setIsModalOpen(false);
+      fetchCustomers();
+    } catch (err) {
+      console.error('Save customer failed:', err);
+      message.error(err.response?.data?.message || 'Failed to save customer');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const res = await customerService.deleteCustomer(id);
+      message.success(res.message || 'Customer record updated');
+      fetchCustomers();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      message.error('Failed to delete customer');
+    }
+  };
+
+  // Open 360 Drawer
+  const handleView360 = async (id) => {
+    setSelectedCustomerId(id);
+    setDrawerOpen(true);
+    setDetailLoading(true);
+    try {
+      const res = await customerService.getCustomerById(id);
+      if (res && res.success) {
+        setDetailData(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load customer details:', err);
+      message.error('Failed to load customer profile details');
+    } finally {
+      setDetailLoading(false);
     }
   };
 
   const columns = [
     {
-      title: 'Name', dataIndex: 'name', key: 'name',
-      render: (v, r) => (
-        <Button type="link" onClick={() => { setSelected(r); setShowDrawer(true); }} style={{ padding: 0, fontWeight: 600 }}>
-          {v}
-        </Button>
+      title: 'Customer & Company',
+      key: 'name',
+      render: (_, record) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Avatar
+            style={{
+              backgroundColor: '#0b2e59',
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: 12
+            }}
+          >
+            {record.name.charAt(0).toUpperCase()}
+          </Avatar>
+          <div>
+            <div
+              style={{ fontWeight: 600, color: '#0b2e59', cursor: 'pointer' }}
+              onClick={() => handleView360(record._id)}
+            >
+              {record.name}
+            </div>
+            {record.companyName && (
+              <div style={{ fontSize: 12, color: '#475569' }}>{record.companyName}</div>
+            )}
+          </div>
+        </div>
       )
     },
-    { title: 'Phone', dataIndex: 'phone', key: 'phone' },
-    { title: 'Email', dataIndex: 'email', key: 'email', render: v => v || '—' },
-    { title: 'City', dataIndex: 'city', key: 'city', render: v => v || '—' },
     {
-      title: 'GSTIN', dataIndex: 'gstin', key: 'gstin',
-      render: v => v ? <Tag color="blue">{v}</Tag> : <Text type="secondary">None</Text>
+      title: 'Contact Details',
+      key: 'contact',
+      render: (_, record) => (
+        <div style={{ fontSize: 12.5 }}>
+          <div>
+            <PhoneOutlined style={{ color: '#0b2e59', marginRight: 6 }} />
+            <span className="tabular-nums">{record.phone}</span>
+          </div>
+          {record.email && (
+            <div style={{ color: '#64748b', marginTop: 2 }}>
+              <MailOutlined style={{ marginRight: 6 }} />
+              {record.email}
+            </div>
+          )}
+        </div>
+      )
     },
     {
-      title: '', key: 'actions',
-      render: (_, r) => (
-        <Tooltip title="Edit">
-          <Button icon={<EditOutlined />} size="small" onClick={() => {
-            setSelected(r); setEditMode(true); form.setFieldsValue(r); setShowModal(true);
-          }} />
-        </Tooltip>
+      title: 'Location',
+      key: 'location',
+      render: (_, record) => (
+        <div style={{ fontSize: 12.5, color: '#475569' }}>
+          <EnvironmentOutlined style={{ color: '#94a3b8', marginRight: 4 }} />
+          {[record.city, record.state].filter(Boolean).join(', ') || '—'}
+        </div>
+      )
+    },
+    {
+      title: 'Category',
+      dataIndex: 'category',
+      key: 'category',
+      render: (cat) => <Tag color={categoryColors[cat] || 'default'}>{cat || 'General'}</Tag>
+    },
+    {
+      title: 'GSTIN',
+      dataIndex: 'gstin',
+      key: 'gstin',
+      render: (gst) =>
+        gst ? (
+          <span className="ref-badge" style={{ fontSize: 11 }}>
+            {gst}
+          </span>
+        ) : (
+          <span style={{ color: '#94a3b8', fontSize: 11 }}>Not registered</span>
+        )
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => {
+        const color = status === 'Active' ? 'success' : status === 'Lead' ? 'processing' : 'default';
+        return <Tag color={color}>{status}</Tag>;
+      }
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      align: 'right',
+      render: (_, record) => (
+        <Space size={4}>
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => handleView360(record._id)}
+            title="360° Profile"
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenModal(record)}
+            title="Edit Customer"
+          />
+          <Popconfirm
+            title="Deactivate or delete customer?"
+            description="Existing financial records will be preserved."
+            onConfirm={() => handleDelete(record._id)}
+            okText="Confirm"
+            cancelText="Cancel"
+          >
+            <Button type="text" size="small" danger icon={<DeleteOutlined />} title="Delete" />
+          </Popconfirm>
+        </Space>
       )
     }
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Row justify="space-between" align="middle" style={{ marginBottom: 20 }}>
-        <Col>
-          <Title level={4} style={{ margin: 0 }}>Customer Master</Title>
-          <Text type="secondary">{customers.length} customers total</Text>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* ── HEADER ROW ── */}
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1 className="page-title">Customer Relationship Management (CRM)</h1>
+          <p className="page-subtitle">
+            Master directory of roofing clients, builder accounts, project histories, and financial ledgers
+          </p>
+        </div>
+        <div className="page-header__actions">
+          <Button icon={<SyncOutlined />} onClick={handleSync} loading={loading}>
+            Sync Records
+          </Button>
+          <Button
+            type="primary"
+            icon={<UserAddOutlined />}
+            onClick={() => handleOpenModal()}
+            style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
+          >
+            Add Customer
+          </Button>
+        </div>
+      </div>
+
+      {/* ── KPI METRIC CARDS ── */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Total Clients</span>
+              <div className="stat-card__icon" style={{ background: 'var(--navy-subtle)', color: 'var(--navy)' }}>
+                <TeamOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value tabular-nums">{stats.totalCustomers}</div>
+            <div className="stat-card__meta">Registered customer accounts</div>
+          </div>
         </Col>
-        <Col>
-          <Space>
-            <Input.Search
-              placeholder="Search name or phone…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onSearch={v => load(v)}
-              allowClear
-              onClear={() => load()}
-              style={{ width: 260 }}
-            />
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditMode(false); form.resetFields(); setShowModal(true); }}>
-              Add Customer
-            </Button>
-          </Space>
+
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Active Contracts</span>
+              <div className="stat-card__icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
+                <CheckCircleOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value tabular-nums" style={{ color: '#15803d' }}>
+              {stats.activeCustomers}
+            </div>
+            <div className="stat-card__meta">Live project engagements</div>
+          </div>
+        </Col>
+
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Lifetime Billed</span>
+              <div className="stat-card__icon" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+                <AccountBookOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value tabular-nums" style={{ color: '#0b2e59', fontSize: 22 }}>
+              {formatINR(stats.totalInvoiced)}
+            </div>
+            <div className="stat-card__meta">Total cumulative billings</div>
+          </div>
+        </Col>
+
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Outstanding Receivables</span>
+              <div className="stat-card__icon" style={{ background: '#fff7ed', color: '#d97706' }}>
+                <ClockCircleOutlined />
+              </div>
+            </div>
+            <div
+              className="stat-card__value tabular-nums"
+              style={{ color: stats.totalDue > 0 ? '#b91c1c' : '#15803d', fontSize: 22 }}
+            >
+              {formatINR(stats.totalDue)}
+            </div>
+            <div className="stat-card__meta">Pending invoice balances</div>
+          </div>
         </Col>
       </Row>
 
-      <Card>
+      {/* ── FILTER & SEARCH BAR ── */}
+      <div className="filter-bar">
+        <Input
+          placeholder="Search by client name, company, phone, email, GSTIN, city..."
+          prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          allowClear
+          style={{ width: 340, flex: '1 1 280px' }}
+        />
+
+        <Select
+          style={{ width: 180 }}
+          value={categoryFilter}
+          onChange={setCategoryFilter}
+          placeholder="Filter Category"
+        >
+          <Option value="All">All Categories</Option>
+          <Option value="Industrial">Industrial</Option>
+          <Option value="Commercial">Commercial</Option>
+          <Option value="PEB Builder">PEB Builder</Option>
+          <Option value="Architect">Architect</Option>
+          <Option value="Individual">Individual</Option>
+          <Option value="Govt/Infra">Govt / Infra</Option>
+        </Select>
+
+        <Select
+          style={{ width: 160 }}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          placeholder="Filter Status"
+        >
+          <Option value="All">All Statuses</Option>
+          <Option value="Active">Active</Option>
+          <Option value="Lead">Lead</Option>
+          <Option value="Inactive">Inactive</Option>
+        </Select>
+
+        <Button icon={<ReloadOutlined />} onClick={fetchCustomers} loading={loading}>
+          Reset
+        </Button>
+      </div>
+
+      {/* ── CUSTOMERS DATA TABLE ── */}
+      <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
         <Table
           columns={columns}
           dataSource={customers}
           rowKey="_id"
           loading={loading}
-          pagination={{ pageSize: 15, showSizeChanger: true }}
+          pagination={{ pageSize: 12, showTotal: (t) => `Total ${t} customer accounts` }}
+          size="middle"
         />
-      </Card>
+      </div>
 
-      {/* Add/Edit Modal */}
+      {/* ADD / EDIT CUSTOMER MODAL */}
       <Modal
-        title={editMode ? 'Edit Customer' : 'Add New Customer'}
-        open={showModal}
-        onCancel={() => { setShowModal(false); form.resetFields(); }}
-        onOk={() => form.submit()}
-        okText={editMode ? 'Update' : 'Save'}
-        width={560}
+        title={editingCustomer ? 'Edit Customer Profile' : 'Create New Customer Account'}
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        onOk={handleSubmitForm}
+        confirmLoading={submitting}
+        width={680}
+        okText={editingCustomer ? 'Update Profile' : 'Save Customer'}
+        okButtonProps={{ style: { background: '#0b2e59', borderColor: '#0b2e59' } }}
       >
-        <Form form={form} layout="vertical" onFinish={handleSave}>
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
-                <Input prefix={<UserOutlined />} placeholder="Customer name" />
+              <Form.Item
+                name="name"
+                label="Contact Person / Client Name"
+                rules={[{ required: true, message: 'Client name is required' }]}
+              >
+                <Input placeholder="e.g. Rajesh Kumar" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="phone" label="Phone" rules={[{ required: true }]}>
-                <Input prefix={<PhoneOutlined />} placeholder="+91 99999 99999" />
+              <Form.Item name="companyName" label="Company / Entity Name">
+                <Input placeholder="e.g. Apex Engineering Ltd." />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="phone"
+                label="Primary Phone Number"
+                rules={[{ required: true, message: 'Phone number is required' }]}
+              >
+                <Input placeholder="e.g. 9840012345" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="email" label="Email">
-                <Input prefix={<MailOutlined />} placeholder="email@example.com" />
+              <Form.Item name="alternatePhone" label="Alternate Phone">
+                <Input placeholder="e.g. 9444098765" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="email" label="Email Address">
+                <Input placeholder="contact@company.com" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="gstin" label="GSTIN">
-                <Input prefix={<IdcardOutlined />} placeholder="22AAAAA0000A1Z5" />
+              <Form.Item name="gstin" label="GSTIN Number">
+                <Input placeholder="e.g. 33AAAAA0000A1Z5" style={{ textTransform: 'uppercase' }} />
               </Form.Item>
             </Col>
-            <Col span={24}>
-              <Form.Item name="address" label="Address">
-                <Input.TextArea rows={2} placeholder="Full address" />
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="category" label="Client Category">
+                <Select>
+                  <Option value="Industrial">Industrial</Option>
+                  <Option value="Commercial">Commercial</Option>
+                  <Option value="PEB Builder">PEB Builder</Option>
+                  <Option value="Architect">Architect</Option>
+                  <Option value="Individual">Individual</Option>
+                  <Option value="Govt/Infra">Govt / Infra</Option>
+                </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
+              <Form.Item name="status" label="Account Status">
+                <Select>
+                  <Option value="Active">Active</Option>
+                  <Option value="Lead">Lead</Option>
+                  <Option value="Inactive">Inactive</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="address" label="Site / Office Address">
+            <Input.TextArea rows={2} placeholder="Street, Industrial Area, Landmark" />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={8}>
               <Form.Item name="city" label="City">
-                <Input placeholder="e.g. Kochi" />
+                <Input placeholder="e.g. Chennai" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="state" label="State">
+                <Input placeholder="Tamil Nadu" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="pincode" label="Pincode">
+                <Input placeholder="600001" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="paymentTerms" label="Default Payment Terms">
+                <Input placeholder="e.g. 30 days, 50% Advance" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="pincode" label="Pincode">
-                <Input placeholder="682001" />
-              </Form.Item>
-            </Col>
-            <Col span={24}>
-              <Form.Item name="notes" label="Notes">
-                <Input.TextArea rows={2} placeholder="Internal notes…" />
+              <Form.Item name="notes" label="Internal Notes">
+                <Input placeholder="Special specifications or project preferences" />
               </Form.Item>
             </Col>
           </Row>
         </Form>
       </Modal>
 
-      {/* 360° Profile Drawer */}
+      {/* 360° CUSTOMER PROFILE DRAWER */}
       <Drawer
-        title={selected?.name}
-        open={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        width={440}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        width={760}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ShopOutlined style={{ color: '#0b2e59', fontSize: 18 }} />
+            <span>Customer 360° Enterprise Profile</span>
+          </div>
+        }
       >
-        {selected && (
-          <Space direction="vertical" style={{ width: '100%' }} size={16}>
-            <Card size="small" title="Contact Details">
-              <p><PhoneOutlined /> <strong>Phone:</strong> {selected.phone}</p>
-              {selected.email && <p><MailOutlined /> <strong>Email:</strong> {selected.email}</p>}
-              {selected.address && <p><EnvironmentOutlined /> <strong>Address:</strong> {selected.address}, {selected.city}</p>}
-              {selected.gstin && <p><IdcardOutlined /> <strong>GSTIN:</strong> {selected.gstin}</p>}
-            </Card>
-            {selected.notes && (
-              <Card size="small" title="Notes">
-                <Text type="secondary">{selected.notes}</Text>
-              </Card>
-            )}
-            <Button
-              block
-              icon={<EditOutlined />}
-              onClick={() => {
-                setShowDrawer(false);
-                setEditMode(true);
-                form.setFieldsValue(selected);
-                setShowModal(true);
+        {detailLoading || !detailData ? (
+          <div style={{ padding: 40, textAlign: 'center' }}>Loading customer profile...</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Customer Summary Card */}
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+                padding: '18px 20px'
               }}
             >
-              Edit Customer
-            </Button>
-          </Space>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0b2e59' }}>
+                    {detailData.customer.name}
+                  </div>
+                  {detailData.customer.companyName && (
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginTop: 2 }}>
+                      {detailData.customer.companyName}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <Tag color={categoryColors[detailData.customer.category] || 'blue'}>
+                      {detailData.customer.category}
+                    </Tag>
+                    <Tag color={detailData.customer.status === 'Active' ? 'success' : 'default'}>
+                      {detailData.customer.status}
+                    </Tag>
+                    {detailData.customer.gstin && (
+                      <span className="ref-badge" style={{ fontSize: 11 }}>
+                        GSTIN: {detailData.customer.gstin}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  type="primary"
+                  icon={<CalculatorOutlined />}
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    navigate('/sales/estimates/new');
+                  }}
+                  style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
+                >
+                  New Estimate
+                </Button>
+              </div>
+
+              <Divider style={{ margin: '14px 0' }} />
+
+              <Row gutter={[16, 8]} style={{ fontSize: 12.5 }}>
+                <Col span={12}>
+                  <Text type="secondary">Phone:</Text>{' '}
+                  <strong className="tabular-nums" style={{ color: '#0f172a' }}>
+                    {detailData.customer.phone}
+                  </strong>
+                </Col>
+                <Col span={12}>
+                  <Text type="secondary">Email:</Text>{' '}
+                  <strong style={{ color: '#0f172a' }}>{detailData.customer.email || '—'}</strong>
+                </Col>
+                <Col span={24}>
+                  <Text type="secondary">Address:</Text>{' '}
+                  <span style={{ color: '#334155' }}>
+                    {[
+                      detailData.customer.address,
+                      detailData.customer.city,
+                      detailData.customer.state,
+                      detailData.customer.pincode
+                    ]
+                      .filter(Boolean)
+                      .join(', ') || '—'}
+                  </span>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Financial Velocity Bar */}
+            <Row gutter={[12, 12]}>
+              <Col span={8}>
+                <div style={{ background: '#eff6ff', padding: 12, borderRadius: 6, border: '1px solid #bfdbfe' }}>
+                  <div style={{ fontSize: 11, color: '#1e40af', fontWeight: 600 }}>TOTAL BILLED</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#1e3a8a' }}>
+                    {formatINR(detailData.metrics?.totalBilled)}
+                  </div>
+                </div>
+              </Col>
+              <Col span={8}>
+                <div style={{ background: '#ecfdf5', padding: 12, borderRadius: 6, border: '1px solid #a7f3d0' }}>
+                  <div style={{ fontSize: 11, color: '#065f46', fontWeight: 600 }}>COLLECTED</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#064e3b' }}>
+                    {formatINR(detailData.metrics?.totalCollected)}
+                  </div>
+                </div>
+              </Col>
+              <Col span={8}>
+                <div style={{ background: '#fffbeb', padding: 12, borderRadius: 6, border: '1px solid #fde68a' }}>
+                  <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600 }}>OUTSTANDING</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: detailData.metrics?.outstandingBalance > 0 ? '#b91c1c' : '#15803d' }}>
+                    {formatINR(detailData.metrics?.outstandingBalance)}
+                  </div>
+                </div>
+              </Col>
+            </Row>
+
+            {/* 360 Tabs */}
+            <Tabs
+              defaultActiveKey="enquiries"
+              items={[
+                {
+                  key: 'enquiries',
+                  label: `Enquiries (${detailData.enquiries?.length || 0})`,
+                  children: (
+                    <Table
+                      dataSource={detailData.enquiries || []}
+                      rowKey="_id"
+                      size="small"
+                      pagination={false}
+                      columns={[
+                        {
+                          title: 'Date',
+                          dataIndex: 'enquiryDate',
+                          key: 'date',
+                          render: (d) => new Date(d).toLocaleDateString()
+                        },
+                        {
+                          title: 'Roof Type',
+                          dataIndex: 'roofType',
+                          key: 'roofType'
+                        },
+                        {
+                          title: 'Status',
+                          dataIndex: 'status',
+                          key: 'status',
+                          render: (st) => <Tag>{st}</Tag>
+                        }
+                      ]}
+                    />
+                  )
+                },
+                {
+                  key: 'estimates',
+                  label: `Estimates (${detailData.estimates?.length || 0})`,
+                  children: (
+                    <Table
+                      dataSource={detailData.estimates || []}
+                      rowKey="_id"
+                      size="small"
+                      pagination={false}
+                      columns={[
+                        {
+                          title: 'Model',
+                          dataIndex: 'model',
+                          key: 'model'
+                        },
+                        {
+                          title: 'Status',
+                          dataIndex: 'status',
+                          key: 'status',
+                          render: (st) => <Tag color={st === 'approved' ? 'green' : 'default'}>{st}</Tag>
+                        },
+                        {
+                          title: 'Created',
+                          dataIndex: 'createdAt',
+                          key: 'createdAt',
+                          render: (d) => new Date(d).toLocaleDateString()
+                        }
+                      ]}
+                    />
+                  )
+                },
+                {
+                  key: 'workorders',
+                  label: `Work Orders (${detailData.workOrders?.length || 0})`,
+                  children: (
+                    <Table
+                      dataSource={detailData.workOrders || []}
+                      rowKey="_id"
+                      size="small"
+                      pagination={false}
+                      columns={[
+                        {
+                          title: 'Ref Code',
+                          dataIndex: 'refCode',
+                          key: 'refCode',
+                          render: (ref) => <span className="ref-badge">{ref}</span>
+                        },
+                        {
+                          title: 'Model',
+                          dataIndex: 'roofModel',
+                          key: 'roofModel'
+                        },
+                        {
+                          title: 'Grand Total',
+                          dataIndex: 'grandTotal',
+                          key: 'grandTotal',
+                          render: (v) => formatINR(v)
+                        },
+                        {
+                          title: 'Status',
+                          dataIndex: 'status',
+                          key: 'status',
+                          render: (st) => <Tag color={st === 'completed' ? 'success' : 'processing'}>{st}</Tag>
+                        }
+                      ]}
+                    />
+                  )
+                },
+                {
+                  key: 'invoices',
+                  label: `Invoices (${detailData.invoices?.length || 0})`,
+                  children: (
+                    <Table
+                      dataSource={detailData.invoices || []}
+                      rowKey="_id"
+                      size="small"
+                      pagination={false}
+                      columns={[
+                        {
+                          title: 'Invoice Ref',
+                          dataIndex: 'refCode',
+                          key: 'refCode',
+                          render: (ref) => <span className="ref-badge">{ref}</span>
+                        },
+                        {
+                          title: 'Due Date',
+                          dataIndex: 'dueDate',
+                          key: 'dueDate',
+                          render: (d) => new Date(d).toLocaleDateString()
+                        },
+                        {
+                          title: 'Billed',
+                          dataIndex: 'grandTotal',
+                          key: 'grandTotal',
+                          render: (v) => formatINR(v)
+                        },
+                        {
+                          title: 'Due',
+                          dataIndex: 'amountDue',
+                          key: 'amountDue',
+                          render: (v) => (
+                            <span style={{ color: v > 0 ? '#b91c1c' : '#15803d', fontWeight: 600 }}>
+                              {formatINR(v)}
+                            </span>
+                          )
+                        },
+                        {
+                          title: 'Status',
+                          dataIndex: 'status',
+                          key: 'status',
+                          render: (st) => <Tag color={st === 'paid' ? 'success' : 'warning'}>{st}</Tag>
+                        }
+                      ]}
+                    />
+                  )
+                }
+              ]}
+            />
+          </div>
         )}
       </Drawer>
     </div>
   );
-}
+};
+
+export default CustomersPage;

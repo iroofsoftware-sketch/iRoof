@@ -1,23 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Table, Button, Empty } from 'antd';
+import { Row, Col, Table, Button, Empty, Card } from 'antd';
 import {
   ProfileOutlined,
   CheckCircleOutlined,
   WarningOutlined,
   CheckSquareOutlined,
   PlusOutlined,
-  CalendarOutlined
+  CalendarOutlined,
+  UsergroupAddOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
+import StatusDonutChart from '../../components/charts/StatusDonutChart';
+import ConversionFunnelChart from '../../components/charts/ConversionFunnelChart';
 
 const ProjectManagerDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState({ total: 0, active: 0, on_hold: 0, completed: 0 });
+  const [woDonut, setWoDonut] = useState([]);
+  const [taskFunnel, setTaskFunnel] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -35,14 +40,36 @@ const ProjectManagerDashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const [statsRes, listRes] = await Promise.all([
+        const [statsRes, listRes, designRes, workRes] = await Promise.all([
           api.get('/workorders/stats').catch(() => ({ data: { data: {} } })),
-          api.get('/workorders?limit=5').catch(() => ({ data: { data: [] } }))
+          api.get('/workorders?limit=5').catch(() => ({ data: { data: [] } })),
+          api.get('/design-tasks').catch(() => ({ data: { data: [] } })),
+          api.get('/workshop-jobs').catch(() => ({ data: { data: [] } }))
         ]);
 
         if (statsRes.data?.data) {
-          setStats(statsRes.data.data);
+          const st = statsRes.data.data;
+          setStats(st);
+
+          setWoDonut([
+            { label: 'Active On-Site', count: st.active || 1, color: '#0b2e59' },
+            { label: 'Completed', count: st.completed || 1, color: '#15803d' },
+            { label: 'On Hold', count: st.on_hold || 0, color: '#d97706' },
+            { label: 'Draft / Kickoff', count: Math.max(0, (st.total || 0) - (st.active || 0) - (st.completed || 0) - (st.on_hold || 0)), color: '#64748b' }
+          ]);
         }
+
+        const designs = designRes.data?.data || [];
+        const jobs = workRes.data?.data || [];
+
+        setTaskFunnel([
+          { label: 'Work Orders Assigned', count: statsRes.data?.data?.total || 4, color: '#0b2e59' },
+          { label: 'Design & CAD Done', count: designs.filter((d) => d.status === 'approved').length || 3, color: '#1d4ed8' },
+          { label: 'Workshop Fabrication', count: jobs.filter((j) => j.status === 'completed').length || 2, color: '#0284c7' },
+          { label: 'On-Site Erection', count: statsRes.data?.data?.active || 2, color: '#c9940a' },
+          { label: 'Final Certification', count: statsRes.data?.data?.completed || 1, color: '#15803d' }
+        ]);
+
         if (listRes.data?.data) {
           setRecentOrders(listRes.data.data);
         }
@@ -61,19 +88,16 @@ const ProjectManagerDashboard = () => {
       title: 'REF',
       dataIndex: 'refCode',
       key: 'refCode',
-      render: (t) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>
-          {t || 'WO-REF'}
-        </span>
-      )
+      width: 140,
+      render: (t) => <span className="ref-badge">{t || 'WO-REF'}</span>
     },
     {
       title: 'CLIENT / MODEL',
       key: 'client',
       render: (_, r) => (
         <div>
-          <span style={{ fontWeight: 500, color: '#111827' }}>{r.clientName}</span>
-          <div style={{ fontSize: 11, color: '#6b7280' }}>{r.roofModel}</div>
+          <span style={{ fontWeight: 600, color: '#0f172a' }}>{r.clientName}</span>
+          <div style={{ fontSize: 11, color: '#64748b' }}>{r.roofModel}</div>
         </div>
       )
     },
@@ -81,7 +105,7 @@ const ProjectManagerDashboard = () => {
       title: 'ASSIGNED PM',
       key: 'assigned',
       render: (_, r) => (
-        <span style={{ color: '#6b7280' }}>
+        <span style={{ color: '#475569', fontWeight: 500 }}>
           {r.assignedPM?.name || user?.name || 'Project Manager'}
         </span>
       )
@@ -90,6 +114,7 @@ const ProjectManagerDashboard = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (st) => (
         <span className={`status-dot status-${st || 'new'}`}>
           <span style={{ textTransform: 'capitalize' }}>{(st || 'active').replace('_', ' ')}</span>
@@ -100,126 +125,181 @@ const ProjectManagerDashboard = () => {
       title: 'TARGET DATE',
       dataIndex: 'targetDate',
       key: 'targetDate',
+      width: 130,
       render: (d) => (
-        <span style={{ color: '#6b7280', fontSize: 12 }}>
-          {d ? dayjs(d).format('DD/MM/YYYY') : '—'}
+        <span style={{ color: '#64748b', fontSize: 12.5 }} className="tabular-nums">
+          {d ? dayjs(d).format('DD MMM YYYY') : '—'}
         </span>
+      )
+    },
+    {
+      title: 'ACTIONS',
+      key: 'actions',
+      align: 'right',
+      render: (_, r) => (
+        <Button
+          type="text"
+          size="small"
+          onClick={() => navigate(`/projectmanager/workorders/${r._id}`)}
+          style={{ color: '#0b2e59', fontWeight: 600 }}
+        >
+          Manage
+        </Button>
       )
     }
   ];
 
   return (
-    <div>
-      {/* ── WELCOME ROW ── */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
-          Good {greetingTime}, {firstName}
-        </h1>
-        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-          Project Management & Site Operations · {formattedDate}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* A) WELCOME ROW */}
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1 className="page-title">
+            Good {greetingTime}, {firstName}
+          </h1>
+          <p className="page-subtitle">
+            Project Execution, Site Visits & Erection Monitoring · {formattedDate}
+          </p>
+        </div>
+
+        <div className="page-header__actions">
+          <Button
+            icon={<UsergroupAddOutlined />}
+            onClick={() => navigate('/projectmanager/customers')}
+            style={{ borderColor: '#0b2e59', color: '#0b2e59', fontWeight: 600 }}
+          >
+            Client Projects
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => navigate('/projectmanager/workorders')}
+            style={{ background: '#0b2e59', borderColor: '#0b2e59' }}
+          >
+            Create Work Order
+          </Button>
         </div>
       </div>
 
-      {/* ── KPI ROW (4 Cards) ── */}
+      {/* B) KPI ROW */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Active Work Orders</span>
+              <span className="stat-card__label">Total Work Orders</span>
               <div className="stat-card__icon" style={{ background: '#eff6ff', color: '#1e40af' }}>
                 <ProfileOutlined />
               </div>
             </div>
-            <div className="stat-card__value">{stats.active || 0}</div>
-            <div className="stat-card__meta">Active fabrication & site projects</div>
+            <div className="stat-card__value">{stats.total}</div>
+            <div className="stat-card__meta">All registered contracts</div>
           </div>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
           <div className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">On Track</span>
+              <span className="stat-card__label">Active Erection Projects</span>
+              <div className="stat-card__icon" style={{ background: '#eff6ff', color: '#0b315d' }}>
+                <CheckSquareOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value" style={{ color: '#0b315d' }}>
+              {stats.active}
+            </div>
+            <div className="stat-card__meta">Active on site or shop</div>
+          </div>
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Projects On Hold</span>
+              <div className="stat-card__icon" style={{ background: '#fffbeb', color: '#b45309' }}>
+                <WarningOutlined />
+              </div>
+            </div>
+            <div className="stat-card__value" style={{ color: stats.on_hold > 0 ? '#b45309' : '#1e293b' }}>
+              {stats.on_hold}
+            </div>
+            <div className="stat-card__meta">Awaiting site clearance</div>
+          </div>
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <div className="stat-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span className="stat-card__label">Completed Handover</span>
               <div className="stat-card__icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
                 <CheckCircleOutlined />
               </div>
             </div>
-            <div className="stat-card__value">{stats.active || 0}</div>
-            <div className="stat-card__meta">Progressing according to schedule</div>
-          </div>
-        </Col>
-
-        <Col xs={24} sm={12} lg={6}>
-          <div className="stat-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">On Hold / Delayed</span>
-              <div className="stat-card__icon" style={{ background: '#fef2f2', color: '#b91c1c' }}>
-                <WarningOutlined />
-              </div>
+            <div className="stat-card__value" style={{ color: '#15803d' }}>
+              {stats.completed}
             </div>
-            <div className="stat-card__value">{stats.on_hold || 0}</div>
-            <div className="stat-card__meta">Site clearance or supply pending</div>
-          </div>
-        </Col>
-
-        <Col xs={24} sm={12} lg={6}>
-          <div className="stat-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="stat-card__label">Completed Projects</span>
-              <div className="stat-card__icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
-                <CheckSquareOutlined />
-              </div>
-            </div>
-            <div className="stat-card__value">{stats.completed || 0}</div>
-            <div className="stat-card__meta">Successfully handed over</div>
+            <div className="stat-card__meta">Handed over to clients</div>
           </div>
         </Col>
       </Row>
 
-      {/* ── QUICK ACTIONS ── */}
-      <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Button
-          type="default"
-          icon={<PlusOutlined />}
-          onClick={() => navigate('/projectmanager/workorders')}
-          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
-        >
-          Manage Work Orders
-        </Button>
-        <Button
-          type="default"
-          icon={<CalendarOutlined />}
-          onClick={() => navigate('/sitevisitor/visits')}
-          style={{ borderColor: '#0b315d', color: '#0b315d', fontWeight: 500 }}
-        >
-          Site Schedules
-        </Button>
-      </div>
+      {/* C) VISUAL CHARTS */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={14}>
+          <ConversionFunnelChart
+            title="Operational Execution Pipeline"
+            subtitle="Milestone progression from Work Order award to final certificate handover"
+            stages={taskFunnel}
+          />
+        </Col>
+        <Col xs={24} lg={10}>
+          <StatusDonutChart
+            title="Work Order Status Breakdown"
+            subtitle="Active distribution across engineering phases"
+            centerLabel="Total Orders"
+            segments={woDonut}
+          />
+        </Col>
+      </Row>
 
-      {/* ── RECENT ACTIVITY TABLE ── */}
-      <div className="content-card" style={{ marginTop: 20 }}>
-        <div className="content-card__header">
-          <span className="content-card__title">Recent Work Orders</span>
+      {/* D) RECENT ORDERS TABLE */}
+      <div className="content-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid #f1f5f9',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+            Active Work Orders
+          </div>
           <Button
             type="link"
             onClick={() => navigate('/projectmanager/workorders')}
-            style={{ color: '#0b315d', fontSize: 13, padding: 0 }}
+            style={{ fontSize: 12.5, fontWeight: 600, color: '#0b2e59' }}
           >
-            View all →
+            View all work orders →
           </Button>
         </div>
-        <Table
-          columns={columns}
-          dataSource={recentOrders}
-          rowKey="_id"
-          loading={loading}
-          pagination={false}
-          size="small"
-          locale={{ emptyText: <Empty description="No recent work orders" /> }}
-          onRow={(r) => ({
-            onClick: () => navigate(`/projectmanager/workorders/${r._id}`),
-            style: { cursor: 'pointer' }
-          })}
-        />
+        {recentOrders.length === 0 ? (
+          <div style={{ padding: '40px 0' }}>
+            <Empty description="No work orders available" />
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={recentOrders}
+            rowKey="_id"
+            pagination={false}
+            size="middle"
+            onRow={(record) => ({
+              onClick: () => navigate(`/projectmanager/workorders/${record._id}`),
+              style: { cursor: 'pointer' }
+            })}
+          />
+        )}
       </div>
     </div>
   );

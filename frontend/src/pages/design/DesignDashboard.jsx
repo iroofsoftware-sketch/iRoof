@@ -55,11 +55,8 @@ const DesignDashboard = () => {
       title: 'REF',
       dataIndex: 'refCode',
       key: 'refCode',
-      render: (t) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0b315d' }}>
-          {t || 'DT-TASK'}
-        </span>
-      )
+      width: 140,
+      render: (t) => <span className="ref-badge">{t || 'DT-TASK'}</span>
     },
     {
       title: 'TITLE',
@@ -67,9 +64,9 @@ const DesignDashboard = () => {
       key: 'title',
       render: (t, r) => (
         <div>
-          <span style={{ fontWeight: 500 }}>{t}</span>
+          <span style={{ fontWeight: 600, color: '#0f172a' }}>{t}</span>
           {r.workOrderId?.clientName && (
-            <div style={{ fontSize: 11, color: '#6b7280' }}>{r.workOrderId.clientName}</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>{r.workOrderId.clientName}</div>
           )}
         </div>
       )
@@ -78,7 +75,7 @@ const DesignDashboard = () => {
       title: 'ASSIGNED',
       key: 'assigned',
       render: (_, r) => (
-        <span style={{ color: '#6b7280' }}>
+        <span style={{ color: '#475569', fontWeight: 500 }}>
           {r.assignedTo?.name || user?.name || 'Design Team'}
         </span>
       )
@@ -87,6 +84,7 @@ const DesignDashboard = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (st) => (
         <span className={`status-dot status-${st || 'new'}`}>
           <span style={{ textTransform: 'capitalize' }}>{(st || 'pending').replace('_', ' ')}</span>
@@ -97,8 +95,9 @@ const DesignDashboard = () => {
       title: 'DUE DATE',
       dataIndex: 'dueDate',
       key: 'dueDate',
+      width: 130,
       render: (d) => (
-        <span style={{ color: '#6b7280', fontSize: 12 }}>
+        <span style={{ color: '#64748b', fontSize: 12.5 }} className="tabular-nums">
           {d ? dayjs(d).format('DD/MM/YYYY') : '—'}
         </span>
       )
@@ -108,12 +107,14 @@ const DesignDashboard = () => {
   return (
     <div>
       {/* ── WELCOME ROW ── */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
-          Good {greetingTime}, {firstName}
-        </h1>
-        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-          Design & Engineering · {formattedDate}
+      <div className="page-header">
+        <div className="page-header__left">
+          <h1 className="page-title">
+            Good {greetingTime}, {firstName}
+          </h1>
+          <p className="page-subtitle">
+            Design & Structural CAD Console · {formattedDate}
+          </p>
         </div>
       </div>
 
