@@ -293,8 +293,8 @@ p, span, div, label, input, button, select, textarea {
   padding: 20px;
 }
 
-/* Filter Bar Polish */
-.filter-bar {
+/* Filter Bar & Filter Card Polish */
+.filter-bar, .filter-card {
   background: #ffffff;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
@@ -304,6 +304,7 @@ p, span, div, label, input, button, select, textarea {
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 /* Sticky Action Footer Bar (Docked inside workspace, never overlaps sidebar) */
