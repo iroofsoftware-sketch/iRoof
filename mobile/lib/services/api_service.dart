@@ -5,12 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
 class ApiService {
-  // Default to machine's active local Wi-Fi IP so real phones connect out of the box
-  static const String defaultUrl = 'http://192.168.1.35:5000/api';
+  // Live backend URL — update this to your Render deployment URL
+  static const String defaultUrl = 'https://iroof-backend.onrender.com/api';
   static const String prefBaseUrlKey = 'iroof_base_url';
   static const String prefUserKey = 'iroof_user_data';
 
-  // In-memory fallback
+  // In-memory fallback for SharedPreferences
   static final Map<String, String> _memoryStore = {};
   static final Map<String, dynamic> _cacheStore = {};
 
@@ -89,56 +89,25 @@ class ApiService {
     final cleanEmail = email.toLowerCase().trim();
     final baseUrl = await getBaseUrl();
 
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$baseUrl/auth/login'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': cleanEmail, 'password': password.trim()}),
-          )
-          .timeout(const Duration(seconds: 5));
+    final res = await http
+        .post(
+          Uri.parse('$baseUrl/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'email': cleanEmail, 'password': password.trim()}),
+        )
+        .timeout(const Duration(seconds: 10));
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (data['success'] == true && data['user'] != null) {
-          final user = UserModel.fromJson(data['user'], token: data['token']);
-          await saveCurrentUser(user);
-          return user;
-        }
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      if (data['success'] == true && data['user'] != null) {
+        final user = UserModel.fromJson(data['user'], token: data['token']);
+        await saveCurrentUser(user);
+        return user;
       }
-    } catch (_) {}
-
-    // High-availability on-site offline fallback for field sales & consultation
-    if (cleanEmail.contains('admin')) {
-      final user = UserModel(
-        id: 'usr_admin_01',
-        name: 'Enterprise Admin',
-        email: cleanEmail,
-        role: 'admin',
-        token: 'offline_jwt_admin_token',
-      );
-      await saveCurrentUser(user);
-      return user;
-    } else if (cleanEmail.contains('pm') || cleanEmail.contains('project')) {
-      final user = UserModel(
-        id: 'usr_pm_01',
-        name: 'Karthik Raja (PM)',
-        email: cleanEmail,
-        role: 'projectmanager',
-        token: 'offline_jwt_pm_token',
-      );
-      await saveCurrentUser(user);
-      return user;
+      throw Exception(data['message'] ?? 'Login failed');
     } else {
-      final user = UserModel(
-        id: 'usr_site_01',
-        name: 'Venkatesh (Site Engineer)',
-        email: cleanEmail.isNotEmpty ? cleanEmail : 'sitevisitor@iroofing.com',
-        role: 'sitevisitor',
-        token: 'offline_jwt_site_token',
-      );
-      await saveCurrentUser(user);
-      return user;
+      final err = jsonDecode(res.body);
+      throw Exception(err['message'] ?? 'Invalid credentials');
     }
   }
 
@@ -155,7 +124,7 @@ class ApiService {
               if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
             },
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -166,62 +135,16 @@ class ApiService {
         }
       } else if (res.statusCode == 401) {
         onSessionExpired?.call();
+        throw Exception('Session expired. Please log in again.');
       }
-    } catch (_) {}
-
-    // Return cached if available
-    if (_cacheStore['work_orders'] is List) {
-      return List<Map<String, dynamic>>.from(_cacheStore['work_orders']);
+      throw Exception('Failed to load work orders');
+    } catch (e) {
+      // Return cached data if available (brief network glitch recovery)
+      if (_cacheStore['work_orders'] is List) {
+        return List<Map<String, dynamic>>.from(_cacheStore['work_orders']);
+      }
+      rethrow;
     }
-
-    // Default Mock Work Orders
-    return [
-      {
-        '_id': 'wo_01',
-        'refCode': 'WO-2026-0005',
-        'clientName': 'Titan Precision Engineering Works',
-        'siteAddress': 'Plot 18, Phase 2, Hosur Industrial Complex',
-        'roofModel': 'Auditorium',
-        'span': 22.0,
-        'length': 45.0,
-        'height': 2.5,
-        'grandTotal': 1845000,
-        'status': 'completed',
-        'priority': 'urgent',
-        'drawingFiles': [],
-        'materialList': [],
-      },
-      {
-        '_id': 'wo_02',
-        'refCode': 'WO-2026-0002',
-        'clientName': 'Godrej Aerospace Industrial Shed',
-        'siteAddress': 'Industrial Corridor, Vikhroli, Mumbai',
-        'roofModel': 'PEB Cantilever',
-        'span': 18.0,
-        'length': 36.0,
-        'height': 2.0,
-        'grandTotal': 1231212,
-        'status': 'active',
-        'priority': 'high',
-        'drawingFiles': [],
-        'materialList': [],
-      },
-      {
-        '_id': 'wo_03',
-        'refCode': 'WO-2026-0001',
-        'clientName': 'Tata Steel Processing Ltd',
-        'siteAddress': 'Plot 42, SIDCO Industrial Estate, Ambattur, Chennai',
-        'roofModel': 'Curved Arch Shed',
-        'span': 20.0,
-        'length': 40.0,
-        'height': 2.2,
-        'grandTotal': 988368,
-        'status': 'active',
-        'priority': 'medium',
-        'drawingFiles': [],
-        'materialList': [],
-      },
-    ];
   }
 
   // ── WORK ORDER BY ID ──
@@ -237,16 +160,22 @@ class ApiService {
               if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
             },
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         return data['data'] ?? data['workOrder'];
       }
-    } catch (_) {}
-
-    final all = await getWorkOrders();
-    return all.firstWhere((w) => w['_id'] == id || w['id'] == id, orElse: () => all.first);
+    } catch (_) {
+      // Try from in-memory cache
+      if (_cacheStore['work_orders'] is List) {
+        final all = List<Map<String, dynamic>>.from(_cacheStore['work_orders']);
+        try {
+          return all.firstWhere((w) => w['_id'] == id || w['id'] == id);
+        } catch (_) {}
+      }
+    }
+    return null;
   }
 
   // ── WORK ORDER STATS (PIPELINE & STAGE COUNTS) ──
@@ -262,7 +191,7 @@ class ApiService {
               if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
             },
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 8));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -271,16 +200,20 @@ class ApiService {
           return Map<String, dynamic>.from(data['data']);
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      if (_cacheStore['work_order_stats'] != null) {
+        return Map<String, dynamic>.from(_cacheStore['work_order_stats']);
+      }
+    }
 
     return {
-      'total': 5,
-      'pending_accounts': 2,
+      'total': 0,
+      'pending_accounts': 0,
       'pending_design': 0,
       'pending_pm_review': 0,
       'drawing_revision': 0,
       'pending_purchase': 0,
-      'completed': 1,
+      'completed': 0,
     };
   }
 
@@ -293,25 +226,23 @@ class ApiService {
     final baseUrl = await getBaseUrl();
     final user = await getCurrentUser();
 
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$baseUrl/work-orders/$workOrderId/pm-review'),
-            headers: {
-              'Content-Type': 'application/json',
-              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
-            },
-            body: jsonEncode({
-              'decision': decision,
-              'notes': notes,
-            }),
-          )
-          .timeout(const Duration(seconds: 6));
+    final res = await http
+        .post(
+          Uri.parse('$baseUrl/work-orders/$workOrderId/pm-review'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+          },
+          body: jsonEncode({
+            'decision': decision,
+            'notes': notes,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
 
-      return res.statusCode == 200;
-    } catch (_) {
-      return true; // Local demo acknowledge
-    }
+    if (res.statusCode == 200) return true;
+    final err = jsonDecode(res.body);
+    throw Exception(err['message'] ?? 'Review submission failed');
   }
 
   // ── SITE VISITS (ASSIGNED OR ALL) ──
@@ -328,7 +259,7 @@ class ApiService {
               if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
             },
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -339,43 +270,15 @@ class ApiService {
         }
       } else if (res.statusCode == 401) {
         onSessionExpired?.call();
+        throw Exception('Session expired. Please log in again.');
       }
-    } catch (_) {}
-
-    if (_cacheStore['site_visits'] is List) {
-      return List<Map<String, dynamic>>.from(_cacheStore['site_visits']);
+      throw Exception('Failed to load site visits');
+    } catch (e) {
+      if (_cacheStore['site_visits'] is List) {
+        return List<Map<String, dynamic>>.from(_cacheStore['site_visits']);
+      }
+      rethrow;
     }
-
-    return [
-      {
-        '_id': 'sv_01',
-        'refCode': 'SV-2026-0002',
-        'visitType': 'initial',
-        'scheduledDate': '2026-11-20T15:35:28.034Z',
-        'status': 'scheduled',
-        'notes': 'Site kickoff & alignment check for Godrej Aerospace Industrial Shed',
-        'clientName': 'Godrej Aerospace Industrial Shed',
-        'siteAddress': 'Industrial Corridor, Vikhroli, Mumbai',
-        'span': 18.0,
-        'length': 36.0,
-        'roofModel': 'PEB Cantilever',
-        'photos': [],
-      },
-      {
-        '_id': 'sv_02',
-        'refCode': 'SV-2026-0001',
-        'visitType': 'initial',
-        'scheduledDate': '2026-12-05T15:34:25.047Z',
-        'status': 'scheduled',
-        'notes': 'Site kickoff & alignment check for Tata Steel Processing Ltd',
-        'clientName': 'Tata Steel Processing Ltd',
-        'siteAddress': 'Plot 42, SIDCO Industrial Estate, Ambattur, Chennai',
-        'span': 20.0,
-        'length': 40.0,
-        'roofModel': 'Curved Arch Shed',
-        'photos': [],
-      },
-    ];
   }
 
   // ── SUBMIT SITE INSPECTION REPORT & MARK COMPLETE ──
@@ -390,35 +293,33 @@ class ApiService {
     final baseUrl = await getBaseUrl();
     final user = await getCurrentUser();
 
-    try {
-      final res = await http
-          .patch(
-            Uri.parse('$baseUrl/site-visits/$visitId'),
-            headers: {
-              'Content-Type': 'application/json',
-              if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
-            },
-            body: jsonEncode({
-              'report': report,
-              'notes': notes,
-              'photos': photos,
-              'status': status,
-              'completedDate': DateTime.now().toIso8601String(),
-              ...?extraMeasurements != null ? {'measurements': extraMeasurements} : null,
-            }),
-          )
-          .timeout(const Duration(seconds: 6));
+    final res = await http
+        .patch(
+          Uri.parse('$baseUrl/site-visits/$visitId'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
+          },
+          body: jsonEncode({
+            'report': report,
+            'notes': notes,
+            'photos': photos,
+            'status': status,
+            'completedDate': DateTime.now().toIso8601String(),
+            ...?extraMeasurements != null ? {'measurements': extraMeasurements} : null,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
 
-      return res.statusCode == 200;
-    } catch (_) {
-      return true; // Local success fallback
-    }
+    if (res.statusCode == 200) return true;
+    final err = jsonDecode(res.body);
+    throw Exception(err['message'] ?? 'Failed to submit inspection report');
   }
 
   // ── SUBMIT SITE INSPECTION (FORM COMPATIBILITY ALIAS) ──
   static Future<bool> submitSiteInspection(Map<String, dynamic> data) async {
     return submitSiteInspectionReport(
-      visitId: data['_id'] ?? data['id'] ?? 'sv_01',
+      visitId: data['_id'] ?? data['id'] ?? '',
       report: data['report'] ?? 'Field Site Inspection Report',
       notes: data['notes'] ?? '',
       photos: [],
@@ -431,35 +332,31 @@ class ApiService {
     final baseUrl = await getBaseUrl();
     final user = await getCurrentUser();
 
-    try {
-      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload'));
-      if (user?.token != null) {
-        request.headers['Authorization'] = 'Bearer ${user!.token}';
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/upload'));
+    if (user?.token != null) {
+      request.headers['Authorization'] = 'Bearer ${user!.token}';
+    }
+
+    final bytes = await file.readAsBytes();
+    final multipartFile = http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: file.name.isNotEmpty ? file.name : 'site_inspection_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+    request.files.add(multipartFile);
+
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['data'] != null && data['data']['url'] != null) {
+        final url = data['data']['url'] as String;
+        final host = baseUrl.endsWith('/api') ? baseUrl.replaceAll('/api', '') : baseUrl;
+        return url.startsWith('http') ? url : '$host$url';
       }
-
-      final bytes = await file.readAsBytes();
-      final multipartFile = http.MultipartFile.fromBytes(
-        'file',
-        bytes,
-        filename: file.name.isNotEmpty ? file.name : 'site_inspection_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
-      request.files.add(multipartFile);
-
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['data'] != null && data['data']['url'] != null) {
-          final url = data['data']['url'] as String;
-          final host = baseUrl.endsWith('/api') ? baseUrl.replaceAll('/api', '') : baseUrl;
-          return url.startsWith('http') ? url : '$host$url';
-        }
-      }
-    } catch (_) {}
-
-    // Offline demo fallback: return local file path representation
-    return 'file://${file.path}';
+    }
+    throw Exception('Photo upload failed: ${response.statusCode}');
   }
 
   // ── ENQUIRIES (ADMIN) ──
@@ -475,7 +372,7 @@ class ApiService {
               if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
             },
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -484,28 +381,17 @@ class ApiService {
           _cacheStore['enquiries'] = list;
           return list;
         }
+      } else if (res.statusCode == 401) {
+        onSessionExpired?.call();
+        throw Exception('Session expired. Please log in again.');
       }
-    } catch (_) {}
-
-    return [
-      {
-        '_id': 'enq_01',
-        'clientName': 'Titan Precision Engineering Works',
-        'phone': '9840911223',
-        'address': 'Plot 18, Phase 2, Hosur Industrial Complex',
-        'roofType': 'Auditorium',
-        'status': 'estimated',
-      },
-      {
-        '_id': 'enq_02',
-        'clientName': 'Godrej Aerospace Industrial Shed',
-        'phone': '9840212345',
-        'email': 'supply@godrej.com',
-        'address': 'Industrial Corridor, Vikhroli, Mumbai',
-        'roofType': 'PEB Cantilever',
-        'status': 'estimated',
-      },
-    ];
+      throw Exception('Failed to load enquiries');
+    } catch (e) {
+      if (_cacheStore['enquiries'] is List) {
+        return List<Map<String, dynamic>>.from(_cacheStore['enquiries']);
+      }
+      rethrow;
+    }
   }
 
   // ── USERS DIRECTORY (ADMIN) ──
@@ -521,7 +407,7 @@ class ApiService {
               if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
             },
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -530,16 +416,17 @@ class ApiService {
           _cacheStore['users'] = list;
           return list;
         }
+      } else if (res.statusCode == 401) {
+        onSessionExpired?.call();
+        throw Exception('Session expired. Please log in again.');
       }
-    } catch (_) {}
-
-    return [
-      {'name': 'Admin User', 'email': 'admin@iroofing.com', 'role': 'admin', 'isActive': true},
-      {'name': 'Project Manager', 'email': 'pm@iroofing.com', 'role': 'projectmanager', 'isActive': true},
-      {'name': 'Site Inspector', 'email': 'sitevisitor@iroofing.com', 'role': 'sitevisitor', 'isActive': true},
-      {'name': 'Design Engineer', 'email': 'design@iroofing.com', 'role': 'design', 'isActive': true},
-      {'name': 'Workshop Lead', 'email': 'workshop@iroofing.com', 'role': 'workshop', 'isActive': true},
-    ];
+      throw Exception('Failed to load users');
+    } catch (e) {
+      if (_cacheStore['users'] is List) {
+        return List<Map<String, dynamic>>.from(_cacheStore['users']);
+      }
+      rethrow;
+    }
   }
 
   // ── NOTIFICATIONS ──
@@ -555,7 +442,7 @@ class ApiService {
               if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
             },
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 8));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -567,23 +454,8 @@ class ApiService {
     } catch (_) {}
 
     return {
-      'unreadCount': 2,
-      'notifications': [
-        {
-          '_id': 'notif_01',
-          'title': 'New Site Inspection Assigned',
-          'message': 'Godrej Aerospace Industrial Shed visit scheduled for today.',
-          'isRead': false,
-          'createdAt': DateTime.now().subtract(const Duration(minutes: 45)).toIso8601String(),
-        },
-        {
-          '_id': 'notif_02',
-          'title': 'Design Drawings Ready',
-          'message': 'Titan Precision Engineering Works drawings submitted for PM review.',
-          'isRead': false,
-          'createdAt': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-        },
-      ],
+      'unreadCount': 0,
+      'notifications': [],
     };
   }
 
@@ -596,7 +468,7 @@ class ApiService {
         headers: {
           if (user?.token != null) 'Authorization': 'Bearer ${user!.token}',
         },
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 5));
     } catch (_) {}
   }
 
@@ -617,42 +489,26 @@ class ApiService {
       if (designation != null) 'designation': designation.trim(),
     };
 
-    try {
-      final res = await http.put(
-        Uri.parse('$baseUrl/auth/profile'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (currentUser?.token != null) 'Authorization': 'Bearer ${currentUser!.token}',
-        },
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 5));
+    final res = await http.put(
+      Uri.parse('$baseUrl/auth/profile'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (currentUser?.token != null) 'Authorization': 'Bearer ${currentUser!.token}',
+      },
+      body: jsonEncode(payload),
+    ).timeout(const Duration(seconds: 10));
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        final updatedUser = UserModel.fromJson(
-          data['user'],
-          token: currentUser?.token,
-        );
-        await saveCurrentUser(updatedUser);
-        return updatedUser;
-      } else {
-        final err = jsonDecode(res.body);
-        throw Exception(err['message'] ?? 'Failed to update profile');
-      }
-    } catch (e) {
-      if (e is Exception && e.toString().contains('Failed to update')) rethrow;
-      // Offline fallback: save locally
-      final updatedUser = UserModel(
-        id: currentUser?.id ?? 'offline_id',
-        name: name,
-        email: email,
-        role: currentUser?.role ?? 'sitevisitor',
-        phone: phone,
-        designation: designation,
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final updatedUser = UserModel.fromJson(
+        data['user'],
         token: currentUser?.token,
       );
       await saveCurrentUser(updatedUser);
       return updatedUser;
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['message'] ?? 'Failed to update profile');
     }
   }
 
@@ -664,19 +520,17 @@ class ApiService {
     final baseUrl = await getBaseUrl();
     final currentUser = await getCurrentUser();
 
-    final payload = {
-      'currentPassword': currentPassword,
-      'newPassword': newPassword,
-    };
-
     final res = await http.put(
       Uri.parse('$baseUrl/auth/change-password'),
       headers: {
         'Content-Type': 'application/json',
         if (currentUser?.token != null) 'Authorization': 'Bearer ${currentUser!.token}',
       },
-      body: jsonEncode(payload),
-    ).timeout(const Duration(seconds: 5));
+      body: jsonEncode({
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      }),
+    ).timeout(const Duration(seconds: 10));
 
     if (res.statusCode == 200) {
       return true;
