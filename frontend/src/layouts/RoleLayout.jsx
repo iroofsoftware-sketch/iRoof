@@ -242,12 +242,6 @@ const RoleLayout = () => {
   };
 
   useEffect(() => {
-    loadNotifications();
-    const interval = setInterval(loadNotifications, 30000); // poll every 30s
-    return () => clearInterval(interval);
-  }, [loadNotifications]);
-
-  useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
